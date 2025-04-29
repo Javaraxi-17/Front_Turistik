@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Animated, Platform, Dimensions } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import Header from '../components/Header';
 import PlaceCard from '../components/PlaceCard';
 import { WebView } from 'react-native-webview';
+import { useTheme } from '@/context/ThemeContext';
 
 const MOCK_PLACES = [
   {
@@ -33,6 +33,8 @@ const MOCK_PLACES = [
 ];
 
 const MapComponent = () => {
+  const { colors } = useTheme();
+
   const mapHTML = `
     <!DOCTYPE html>
     <html>
@@ -41,7 +43,10 @@ const MapComponent = () => {
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
         <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
         <style>
-          body { margin: 0; }
+          body { 
+            margin: 0;
+            background-color: ${colors.background};
+          }
           #map { height: 100vh; }
         </style>
       </head>
@@ -71,19 +76,11 @@ const MapComponent = () => {
 
 export default function MainScreen() {
   const scrollY = useRef(new Animated.Value(0)).current;
-
-  const handleProfilePress = () => {
-    // Navegación al perfil del usuario
-  };
+  const { colors } = useTheme();
 
   return (
     <SafeAreaProvider>
-      <View style={styles.container}>
-        <Header
-          userName="John Doe"
-          onProfilePress={handleProfilePress}
-        />
-
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <ScrollView
           style={styles.scrollView}
           onScroll={Animated.event(
@@ -92,7 +89,7 @@ export default function MainScreen() {
           )}
           scrollEventThrottle={16}
         >
-          <View style={styles.mapContainer}>
+          <View style={[styles.mapContainer, { backgroundColor: colors.card }]}>
             <MapComponent />
           </View>
 
@@ -134,13 +131,11 @@ export default function MainScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   scrollView: {
     flex: 1,
   },
   mapContainer: {
     height: 400,
-    backgroundColor: '#fff',
   },
 });

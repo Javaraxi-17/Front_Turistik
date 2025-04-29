@@ -2,10 +2,25 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';  // Correcto aquí
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import OptionButton from '../components/OptionButton';
 import ProgressBar from '../components/ProgressBar';
 import { toast } from 'sonner-native';
+import { useTheme } from '@/context/ThemeContext';
+
+type RootStackParamList = {
+  MainScreen: undefined;
+};
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+interface Answers {
+  [key: string]: string | undefined;
+  transportation?: string;
+  food?: string;
+  budget?: string;
+}
 
 const questions = [
   {
@@ -26,9 +41,10 @@ const questions = [
 ];
 
 export default function FirstTimeProfileScreen() {
-  const navigation = useNavigation();  // Hook useNavigation aquí
+  const navigation = useNavigation<NavigationProp>();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState({});
+  const [answers, setAnswers] = useState<Answers>({});
+  const { colors } = useTheme();
 
   const handleOptionSelect = (questionId: string, option: string) => {
     setAnswers(prev => ({
@@ -55,10 +71,10 @@ export default function FirstTimeProfileScreen() {
   const currentQuestion = questions[currentQuestionIndex];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <MaterialCommunityIcons name="compass-outline" size={40} color="#FF385C" />
-        <Text style={styles.title}>Personaliza tu experiencia</Text>
+        <MaterialCommunityIcons name="compass-outline" size={40} color={colors.primary} />
+        <Text style={[styles.title, { color: colors.text }]}>Personaliza tu experiencia</Text>
       </View>
 
       <ProgressBar 
@@ -67,7 +83,7 @@ export default function FirstTimeProfileScreen() {
       />
 
       <ScrollView style={styles.content}>
-        <Text style={styles.question}>{currentQuestion.question}</Text>
+        <Text style={[styles.question, { color: colors.text }]}>{currentQuestion.question}</Text>
         
         <View style={styles.optionsContainer}>
           {currentQuestion.options.map((option) => (
@@ -81,9 +97,9 @@ export default function FirstTimeProfileScreen() {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { borderTopColor: colors.border }]}>
         <TouchableOpacity 
-          style={styles.nextButton}
+          style={[styles.nextButton, { backgroundColor: colors.primary }]}
           onPress={handleNext}
         >
           <Text style={styles.nextButtonText}>
@@ -98,7 +114,6 @@ export default function FirstTimeProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
   },
   header: {
     alignItems: 'center',
@@ -107,7 +122,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
     marginTop: 10,
   },
   content: {
@@ -117,7 +131,6 @@ const styles = StyleSheet.create({
   question: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 20,
   },
   optionsContainer: {
@@ -126,10 +139,8 @@ const styles = StyleSheet.create({
   footer: {
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#f5f5f5',
   },
   nextButton: {
-    backgroundColor: '#FF385C',
     padding: 15,
     borderRadius: 25,
     alignItems: 'center',
