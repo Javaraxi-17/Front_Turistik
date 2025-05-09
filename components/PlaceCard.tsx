@@ -1,51 +1,58 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme } from '@/context/ThemeContext';
+import { LatLng } from 'react-native-maps';
 
 interface PlaceCardProps {
   place: {
     id: string;
     name: string;
+    vicinity: string;
     description: string;
-    rating: number;
-    image: string;
-    distance?: string;
+    rating?: number;
+    distance: string;
+    location: LatLng;
+    photoUrl?: string;
   };
   onPress: () => void;
   style?: any;
 }
 
 export default function PlaceCard({ place, onPress, style }: PlaceCardProps) {
+  const { isDarkMode } = useTheme();
+  const textColor = isDarkMode ? '#f5f5f5' : '#333';
+  const subTextColor = isDarkMode ? '#cccccc' : '#666';
   return (
-    <Animated.View style={[styles.container, style]}>
+    <Animated.View style={[styles.container, { backgroundColor: isDarkMode ? '#23272e' : 'white' }, style]}>
       <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
         <Image
-          source={{ uri: place.image }}
+          source={{ uri: place.photoUrl }}
           style={styles.image}
         />
         
         <View style={styles.content}>
           <View style={styles.header}>
-            <Text style={styles.name}>{place.name}</Text>
+            <Text style={[styles.name, { color: textColor }]}>{place.name}</Text>
             <View style={styles.ratingContainer}>
               <MaterialCommunityIcons name="star" size={16} color="#FFD700" />
               <Text style={styles.rating}>{place.rating}</Text>
             </View>
           </View>
 
-          <Text style={styles.description} numberOfLines={2}>
+          <Text style={[styles.description, { color: subTextColor }]} numberOfLines={2}>
             {place.description}
           </Text>
 
           {place.distance && (
             <View style={styles.distanceContainer}>
-              <MaterialCommunityIcons name="map-marker" size={14} color="#666" />
-              <Text style={styles.distance}>{place.distance}</Text>
+              <MaterialCommunityIcons name="map-marker" size={14} color={isDarkMode ? '#cccccc' : '#666'} />
+              <Text style={[styles.distance, { color: subTextColor }]}>{place.distance}</Text>
             </View>
           )}
 
           <TouchableOpacity style={styles.addButton} onPress={onPress}>
-            <Text style={styles.addButtonText}>Agregar al itinerario</Text>
+            <Text style={[styles.addButtonText, { color: textColor }]}>Agregar al itinerario</Text>
             <MaterialCommunityIcons name="plus-circle" size={20} color="white" />
           </TouchableOpacity>
         </View>
