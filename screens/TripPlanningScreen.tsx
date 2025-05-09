@@ -4,13 +4,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { toast } from 'sonner-native';
 
-const OptionButton = ({ selected, onPress, icon, label }) => (
+const OptionButton = ({ selected, onPress, icon, label }: { selected: boolean; onPress: () => void; icon: string; label: string; }) => (
   <TouchableOpacity 
     style={[styles.optionButton, selected && styles.optionButtonSelected]}
     onPress={onPress}
   >
     <MaterialCommunityIcons 
-      name={icon} 
+      name={icon as any} 
       size={24} 
       color={selected ? '#FF385C' : '#666'} 
     />
@@ -71,7 +71,7 @@ export default function TripPlanningScreen() {
     }
   ];
 
-  const handleSelect = (value, key) => {
+  const handleSelect = (value: string, key: string) => {
     setTripPreferences(prev => ({ ...prev, [key]: value }));
   };
 
@@ -122,7 +122,7 @@ export default function TripPlanningScreen() {
           {currentStepData.options.map((option, index) => (
             <OptionButton
               key={index}
-              selected={tripPreferences[currentStepData.key] === option.value}
+              selected={tripPreferences[currentStepData.key as keyof typeof tripPreferences] === option.value}
               onPress={() => handleSelect(option.value, currentStepData.key)}
               icon={option.icon}
               label={option.label}
@@ -135,10 +135,10 @@ export default function TripPlanningScreen() {
         <TouchableOpacity
           style={[
             styles.nextButton,
-            !tripPreferences[currentStepData.key] && styles.nextButtonDisabled
+            !tripPreferences[currentStepData.key as keyof typeof tripPreferences] && styles.nextButtonDisabled
           ]}
           onPress={handleNext}
-          disabled={!tripPreferences[currentStepData.key]}
+          disabled={!tripPreferences[currentStepData.key as keyof typeof tripPreferences]}
         >
           <Text style={styles.nextButtonText}>
             {currentStep === steps.length - 1 ? 'Generar Ruta' : 'Siguiente'}

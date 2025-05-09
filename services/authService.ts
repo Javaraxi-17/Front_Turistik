@@ -1,27 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_ROUTES, COMMON_HEADERS, API_TIMEOUTS } from '../config/api';
+import { API_ROUTES, COMMON_HEADERS, API_TIMEOUTS, API_BASE_URL } from '../config/api';
+import { User, LoginCredentials, RegisterData } from '@/types/auth.types';
 
 // Interfaces
-export interface LoginCredentials {
-  Email: string;
-  Password: string;
-}
-
-export interface RegisterData {
-  Name: string;
-  Email: string;
-  Password: string;
-  Birth_Date: string;
-  User_Type: string;
-}
-
-export interface User {
-  id: number;
-  name: string;
-  email: string;
-  userType: string;
-}
-
 export interface AuthResponse {
   token: string;
   user: User;
@@ -167,5 +148,35 @@ export const getAuthToken = async (): Promise<string | null> => {
   } catch (error) {
     console.error('Error en getAuthToken:', error);
     return null;
+  }
+};
+
+// Función para cambiar la contraseña
+export const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+  try {
+    const token = await AsyncStorage.getItem('authToken');
+    if (!token) {
+      throw new Error('No hay sesión activa');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        currentPassword,
+        newPassword,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Error al cambiar la contraseña');
+    }
+  } catch (error) {
+    console.error('Error en changePassword:', error);
+    throw error;
   }
 }; 
