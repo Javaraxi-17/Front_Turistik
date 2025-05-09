@@ -4,12 +4,15 @@ import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
+import { useNavigation } from '@react-navigation/native';
+import { HeaderNavigationProp } from '@/types/navigation.types';
 
 export default function Header() {
   const insets = useSafeAreaInsets();
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const { user, logout } = useAuth();
   const { isDarkMode, toggleTheme, colors } = useTheme();
+  const navigation = useNavigation<HeaderNavigationProp>();
 
   const handleLogout = async () => {
     await logout();
@@ -45,6 +48,23 @@ export default function Header() {
             onPress={() => setIsMenuVisible(false)}
           >
             <View style={[styles.menuContainer, { backgroundColor: colors.card }]}>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setIsMenuVisible(false);
+                  navigation.navigate('Settings');
+                }}
+              >
+                <Ionicons
+                  name="settings-outline"
+                  size={20}
+                  color={colors.text}
+                />
+                <Text style={[styles.menuText, { color: colors.text }]}>
+                  Configuración
+                </Text>
+              </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={toggleTheme}

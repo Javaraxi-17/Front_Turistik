@@ -11,6 +11,7 @@ import RegisterScreen from "./screens/RegisterScreen";
 import FirstTimeProfileScreen from "./screens/FirstTimeProfileScreen";
 import TripPreferencesScreen from "./screens/TripPreferencesScreen";
 import MainScreen from './screens/MainScreen';
+import SettingsScreen from './screens/SettingsScreen';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import Header from './components/Header';
@@ -47,6 +48,7 @@ function AppStack() {
       <Stack.Screen name="FirstTimeProfile" component={FirstTimeProfileScreen} />
       <Stack.Screen name="TripPreferences" component={TripPreferencesScreen} />
       <Stack.Screen name="MainScreen" component={MainScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
     </Stack.Navigator>
   );
 }

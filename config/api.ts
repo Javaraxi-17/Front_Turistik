@@ -9,6 +9,7 @@
 // Para correr en emulador Android, usa 10.0.2.2 que apunta al localhost de tu máquina
 // Para correr en dispositivo real, usa la IP real de tu computadora en la red
 // Para iOS puedes usar localhost o la IP real de tu computadora
+// export const API_BASE_URL = 'https://api-turistik-original-1015484149970.us-central1.run.app';
 export const API_BASE_URL = 'https://api-turistik-original-1015484149970.us-central1.run.app';
 // Alternativas:
 // - 'http://localhost:3000' (para iOS)
@@ -20,6 +21,8 @@ export const API_ROUTES = {
   // Rutas de autenticación
   LOGIN: `${API_BASE_URL}/api/users/login`,
   REGISTER: `${API_BASE_URL}/api/users`,
+  QUESTIONS: `${API_BASE_URL}/api/questions`,
+  ANSWERS: `${API_BASE_URL}/api/userAnswers`,
   
   // Rutas de usuario
   USERS: `${API_BASE_URL}/api/users`,
