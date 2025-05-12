@@ -4,13 +4,19 @@
  * Este archivo contiene constantes y configuraciones para la comunicación con la API.
  * Aquí se define la URL base de la API y otros parámetros relevantes.
  */
+// import Constants from 'expo-constants';
+const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_API_KEY;
 
 // URL base de la API - IMPORTANTE: Ajusta esto a la dirección IP correcta de tu servidor
 // Para correr en emulador Android, usa 10.0.2.2 que apunta al localhost de tu máquina
 // Para correr en dispositivo real, usa la IP real de tu computadora en la red
 // Para iOS puedes usar localhost o la IP real de tu computadora
-// export const API_BASE_URL = 'https://api-turistik-original-1015484149970.us-central1.run.app';
 export const API_BASE_URL = 'https://api-turistik-original-1015484149970.us-central1.run.app';
+// export const API_BASE_URL = 'https://api-turistik-original-1015484149970.us-central1.run.app';
+// export const API_BASE_URL = 'http://192.168.1.50:3000';
+console.log(GOOGLE_API_KEY);
+// console.log(GEMINI_API_KEY);
+export const API_GOOGLE = GOOGLE_API_KEY;
 // Alternativas:
 // - 'http://localhost:3000' (para iOS)
 // - 'http://10.0.2.2:3000' (para emulador Android - apunta al localhost de tu computadora)

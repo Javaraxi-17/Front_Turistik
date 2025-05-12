@@ -42,7 +42,7 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
     // Guardar el token y la información del usuario en AsyncStorage
     await AsyncStorage.setItem('authToken', data.token);
     await AsyncStorage.setItem('user', JSON.stringify(data.user));
-    
+    await AsyncStorage.setItem('userId', data.user.id.toString());
     return data;
   } catch (error: any) {
     // Manejo específico para errores de AbortController
@@ -87,10 +87,13 @@ export const register = async (userData: RegisterData): Promise<AuthResponse> =>
     console.log('Registro exitoso, iniciando sesión automática');
     
     // Después del registro exitoso, iniciamos sesión automáticamente
-    return await login({
+    const loginData = await login({
       Email: userData.Email,
       Password: userData.Password,
     });
+    // Guardar userId en cookie
+    document.cookie = `userId=${loginData.user.id}; path=/;`;
+    return loginData;
   } catch (error: any) {
     // Manejo específico para errores de AbortController
     if (error.name === 'AbortError') {

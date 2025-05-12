@@ -15,6 +15,7 @@ import SettingsScreen from './screens/SettingsScreen';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import Header from './components/Header';
+import ItineraryResultScreen from './screens/ItineraryResultScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -30,6 +31,7 @@ function AuthStack() {
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="ItineraryResultScreen" component={ItineraryResultScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
@@ -48,7 +50,9 @@ function AppStack() {
       <Stack.Screen name="FirstTimeProfile" component={FirstTimeProfileScreen} />
       <Stack.Screen name="TripPreferences" component={TripPreferencesScreen} />
       <Stack.Screen name="MainScreen" component={MainScreen} />
+      <Stack.Screen name="ItineraryDetail" component={require('./screens/ItineraryDetailScreen').default} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="ItineraryResultScreen" component={ItineraryResultScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

@@ -1,27 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  Animated,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  Dimensions,
-} from 'react-native';
-
-const screenHeight = Dimensions.get('window').height;
+import React, { useState, useRef } from 'react';
+import { View, StyleSheet, Text, Animated, Dimensions, TouchableOpacity, ActivityIndicator, ScrollView, TextInput } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import * as Location from 'expo-location';
+import MapView, { Marker, PROVIDER_GOOGLE, Callout } from 'react-native-maps';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useLocationAndPlaces } from '../hooks/useLocationAndPlaces';
+import { usePanelAnimation } from '../hooks/usePanelAnimation';
+import { useSearchBar } from '../hooks/useSearchBar';
 import { useTheme } from '@/context/ThemeContext';
-import { Callout } from 'react-native-maps';
-import { Image } from 'react-native';
-
-import PlaceCard from '../components/PlaceCard';
 import { getRecommendedPlaces, PlaceResult } from '../services/placesService';
+import { useNavigation } from '@react-navigation/native';
+import { Image } from 'react-native';
+import PlaceCard from '../components/PlaceCard';
+import SelectedPlacesPanel from '../components/SelectedPlacesPanel';
+import { useAuth } from '@/context/AuthContext';
 
 /* ---------- Estilos de mapa oscuro ---------- */
 const darkMapStyle = [
@@ -64,9 +55,8 @@ const MapComponent: React.FC<MapProps> = ({ userLocation, places }) => {
     <MapView
       provider={PROVIDER_GOOGLE}
       style={{ flex: 1 }}
-      /** <- ¡aquí la pasamos siempre! */
       region={region}
-      showsUserLocation   /* punto azul nativo */
+      showsUserLocation
       customMapStyle={isDarkMode ? darkMapStyle : []}
     >
       {/* marcador manual (opcional) */}
@@ -101,237 +91,151 @@ const MapComponent: React.FC<MapProps> = ({ userLocation, places }) => {
     </MapView>
   );
 };
+
 /* ---------- Pantalla Principal ------------- */
 import { PanResponder } from 'react-native';
 
 export default function MainScreen() {
+  // ...
+  const navigation = useNavigation();
+  const handleCreateItinerary = () => {
+    navigation.navigate('ItineraryDetail', { selectedPlaces });
+    console.log(selectedPlaces);
+  }
+  // ...
+  const [showChecklistPanel, setShowChecklistPanel] = useState(false);
   const { colors, isDarkMode } = useTheme();
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [isSearchVisible, setIsSearchVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
 
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [places, setPlaces] = useState<PlaceResult[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Hook usage
+  const { userLocation, places, loading } = useLocationAndPlaces();
+  const { isPanelOpen, togglePanel, placesContainerHeight } = usePanelAnimation();
+  const { isSearchVisible, searchQuery, setSearchQuery, openSearchBar, closeSearchBar, searchBarWidth } = useSearchBar();
 
-  const panelAnimation = useRef(new Animated.Value(0)).current;
-  const panelAggregatorAnimation = useRef(new Animated.Value(0)).current;
+  // Nuevo estado para los lugares seleccionados
+  const [selectedPlaces, setSelectedPlaces] = useState<PlaceResult[]>([]);
+  const [showItineraryPanel, setShowItineraryPanel] = useState(false);
+  const itineraryAnim = useRef(new Animated.Value(0)).current;
 
-  const aggregatorPanelHeight = panelAggregatorAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 400], // 400 es la altura máxima del panel
-  });
-
-  // Estado para mostrar el panel Lugares agregador
-  const [showAggregator, setShowAggregator] = useState(false);
-
-  // Función para abrir el panel de lugares agregados
-  const openAggregatorPanel = () => {
-    setShowAggregator(true);
-    Animated.timing(panelAggregatorAnimation, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  };
-  
-  const closeAggregatorPanel = () => {
-    Animated.timing(panelAggregatorAnimation, {
-      toValue: 0,
-      duration: 300,
-      useNativeDriver: false,
-    }).start(() => setShowAggregator(false));
+  // Función para manejar la selección de un lugar
+  const handlePlaceSelect = (place: PlaceResult) => {
+    setSelectedPlaces((prev) => [...prev, place]);  // Añade el lugar seleccionado
   };
 
-  // Animación de ancho para la barra de búsqueda
-  const searchBarWidth = useRef(new Animated.Value(0)).current;
-  const maxSearchBarWidth = '85%'; // Usado para el estilo final
-  const [searchBarWidthNum, setSearchBarWidthNum] = useState(0);
-
-  useEffect(() => {
-    const width = Dimensions.get('window').width * 0.85;
-    setSearchBarWidthNum(width);
-  }, []);
-
-  const openSearchBar = () => {
-    setIsSearchVisible(true);
-    Animated.timing(searchBarWidth, {
-      toValue: searchBarWidthNum || 320,
-      duration: 260,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const closeSearchBar = () => {
-    Animated.timing(searchBarWidth, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: false,
-    }).start(() => setIsSearchVisible(false));
-  };
-
-
-  /* ----- Carga inicial: ubicación + lugares ----- */
-  useEffect(() => {
-    (async () => {
-      /* 1. Permiso y coordenadas del usuario */
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setLoading(false);
-        return;
-      }
-      const loc = await Location.getCurrentPositionAsync({});
-      const current = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-      setUserLocation(current);
-
-      /* 2. Consulta lugares cercanos */
-      const results = await getRecommendedPlaces();
-      setPlaces(results);
-      setLoading(false);
-    })();
-  }, []);
-
-  /* -------- Animación del panel inferior -------- */
-  const togglePanel = () => {
-    const toValue = isPanelOpen ? 0 : 1;
-    setIsPanelOpen(!isPanelOpen);
-    Animated.spring(panelAnimation, { toValue, useNativeDriver: false, tension: 50, friction: 7 }).start();
-  };
-
-  const placesContainerHeight = panelAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 400],
-  });
 
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
-        {/* ---------- Mapa ---------- */}
-        <MapComponent userLocation={userLocation} places={places} />
+        {/* Panel de Lugares Seleccionados */}
+        <SelectedPlacesPanel
+          visible={showChecklistPanel}
+          onClose={() => setShowChecklistPanel(false)}
+          selectedPlaces={selectedPlaces}
+          onCreateItinerary={handleCreateItinerary}
+        />
+        {/* Floating Action Buttons (FAB) */}
+        <View style={styles.fabContainer}>
+          <TouchableOpacity
+            style={styles.fab}
+            onPress={openSearchBar}
+            activeOpacity={0.85}
+            accessibilityLabel="Buscar lugares"
+          >
+            <MaterialCommunityIcons name="magnify" size={28} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.miniFab}
+            onPress={() => setShowChecklistPanel(true)}
+            activeOpacity={0.85}
+            accessibilityLabel="Abrir checklist"
+          >
+            <MaterialCommunityIcons name="checkbox-marked" size={22} color="white" />
+          </TouchableOpacity>
+        </View>
 
-        {/* ---------- Botón flotante fuera y arriba del panel ---------- */}
-        {!isSearchVisible && (
+        {/* Floating Button to open Itinerary Panel
+        <TouchableOpacity
+          style={styles.itineraryFab}
+          onPress={toggleItineraryPanel}
+          activeOpacity={0.85}
+          accessibilityLabel="Ver lugares agregados al itinerario"
+        >
+          <MaterialCommunityIcons name="calendar" size={26} color="white" />
+        </TouchableOpacity> */}
+
+        {/* Search Bar with Animation */}
+        {isSearchVisible ? (
           <Animated.View
             style={[
-              styles.searchBubble,
+              styles.fabSearchBarContainer,
               {
                 backgroundColor: colors.card,
-                left: 16,
-                top: Animated.subtract(
-                  new Animated.Value(screenHeight - 400 - -200), // 400 = altura máxima del panel, 64 = altura del botón + margen extra
-                  panelAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, 400] })
-                ),
-                right: undefined,
-                alignSelf: 'flex-start',
-                bottom: undefined,
-                position: 'absolute',
-                zIndex: 15,
+                borderColor: colors.primary,
+                borderWidth: 1,
+                width: searchBarWidth,
               },
             ]}
           >
+            <TextInput
+              style={[styles.fabSearchInput, { color: colors.text }]}
+              placeholder="Buscar lugares..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+              returnKeyType="search"
+            />
             <TouchableOpacity
-              onPress={openSearchBar}
-              activeOpacity={0.8}
+              style={styles.fabSearchAction}
+              onPress={() => {/* Add your search logic here */}}
+              activeOpacity={0.85}
+              accessibilityLabel="Buscar"
             >
-              <MaterialCommunityIcons name="magnify" size={28} color={colors.primary} />
+              <MaterialCommunityIcons name="arrow-right" size={22} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.fabSearchClose}
+              onPress={closeSearchBar}
+            >
+              <MaterialCommunityIcons name="close" size={22} color={colors.text} />
             </TouchableOpacity>
           </Animated.View>
-        )}
+        ) : null}
 
-        {/* ---------- Barra de búsqueda flotante con animación ---------- */}
-        {isSearchVisible && (
-          <Animated.View
-            style={[
-              styles.floatingSearchContainer,
-              {
-                left: 16,
-                top: Animated.subtract(
-                  new Animated.Value(screenHeight - 400 - 64),
-                  panelAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, 400] })
-                ),
-                width: searchBarWidth,
-                overflow: 'hidden',
-                alignItems: 'flex-start',
-                zIndex: 20,
-                position: 'absolute',
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.searchBarContainer,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.primary,
-                  borderWidth: 1,
-                  width: '100%',
-                },
-              ]}
-            >
-              <TextInput
-                style={[styles.searchInput, { color: colors.text }]}
-                placeholder="Buscar lugares..."
-                placeholderTextColor={colors.text + '99'}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                autoFocus
-                returnKeyType="search"
-                onSubmitEditing={() => {/* lógica de búsqueda */}}
-              />
-              <TouchableOpacity
-                style={{
-                  backgroundColor: '#FF385C',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  borderRadius: 22,
-                  marginRight: 4,
-                }}
-                onPress={() => {/* lógica de búsqueda */}}
-                activeOpacity={0.85}
-              >
-                <Text style={{ color: 'white', fontWeight: 'bold', marginRight: 4 }}>Iniciar</Text>
-                <MaterialCommunityIcons name="arrow-right" size={22} color="white" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.closeButton} onPress={closeSearchBar}>
-                <MaterialCommunityIcons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        )}
-
-        {/* ---------- Botón de checklist ---------- */}
-        <Animated.View
-          style={[
-            styles.checklistButton,
-            {
-              backgroundColor: '#FF385C',
-              right: 16,
-              top: Animated.subtract(
-                new Animated.Value(screenHeight - 400 - -200),
-                panelAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, 400] })
-              ),
-              position: 'absolute',
-              zIndex: 15,
-            },
-          ]}
+        {/* Map with Markers */}
+        <MapView
+          provider={PROVIDER_GOOGLE}
+          style={{ flex: 1 }}
+          region={userLocation ? { ...userLocation, latitudeDelta: 0.0122, longitudeDelta: 0.0121 } : { latitude: 37.78825, longitude: -122.4324, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
+          showsUserLocation
+          customMapStyle={isDarkMode ? darkMapStyle : []}
         >
-          <TouchableOpacity
-            onPress={openAggregatorPanel}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="checkbox-marked" size={28} color="white" />
-          </TouchableOpacity>
-        </Animated.View>
+          {/* User Location Marker */}
+          {userLocation && (
+            <Marker coordinate={userLocation} title="Tu ubicación actual" />
+          )}
 
-        {/* ---------- Panel inferior con lista ---------- */}
+          {/* Places Markers */}
+          {places.map(p => (
+            <Marker key={p.id} coordinate={p.location}>
+              <Callout tooltip onPress={() => handlePlaceSelect(p)}>
+                <View style={{ width: 200 }}>
+                  {p.photoUrl && <Image source={{ uri: p.photoUrl }} style={{ width: '100%', height: 90, borderTopLeftRadius: 6, borderTopRightRadius: 6 }} />}
+                  <View style={{ padding: 6, backgroundColor: '#fff', borderBottomLeftRadius: 6, borderBottomRightRadius: 6 }}>
+                    <Text style={{ fontWeight: '600' }}>{p.name}</Text>
+                    <Text>{p.description}</Text>
+                    {p.rating && <Text>⭐ {p.rating}</Text>}
+                    <Text>{p.distance}</Text>
+                  </View>
+                </View>
+              </Callout>
+            </Marker>
+          ))}
+        </MapView>
+
+        {/* Panel with Places */}
         <View style={[styles.panel, { backgroundColor: colors.background }]}>
           <TouchableOpacity
             style={styles.panelHeader}
             onPress={!isSearchVisible ? togglePanel : undefined}
-            activeOpacity={isSearchVisible ? 1 : 0.7}
-            disabled={isSearchVisible}
           >
             <View style={styles.headerContent}>
               <Text style={[styles.panelTitle, { color: colors.text }]}>Lugares Recomendados</Text>
@@ -344,47 +248,114 @@ export default function MainScreen() {
           </TouchableOpacity>
 
           <Animated.View style={[styles.placesContainer, { height: placesContainerHeight }]}>
-            {isPanelOpen && (
-              loading ? (
-                <ActivityIndicator style={{ marginTop: 20 }} color={colors.primary} />
-              ) : (
-                <ScrollView showsVerticalScrollIndicator={false}>
-                  {places.map(place => (
-                    <PlaceCard key={place.id} place={place} onPress={() => {}} />
-                  ))}
-                </ScrollView>
-              )
-            )}
+            {isPanelOpen && (loading ? <ActivityIndicator style={{ marginTop: 20 }} color={colors.primary} /> : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {places.map(place => <PlaceCard key={place.id} place={place} onAdd={() => handlePlaceSelect(place)} />)}
+              </ScrollView>
+            ))}
           </Animated.View>
         </View>
 
-        {/* Panel Lugares agregador */}
-        {showAggregator && (
-            <View style={styles.aggregatorOverlay}>
-            <Animated.View
-              style={[styles.aggregatorPanel, { height: aggregatorPanelHeight }]}
-            >
-              <Text style={styles.aggregatorTitle}>Lugares Agregados</Text>
-              <View style={styles.aggregatorContentBox}>
-                <Text style={styles.aggregatorContentText}>
-                  Aquí aparecerán los lugares agregados a tu itinerario
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.closeAggregatorButton}
-                onPress={closeAggregatorPanel}
-              >
-                <Text style={styles.closeAggregatorButtonText}>Cerrar</Text>
-              </TouchableOpacity>
-            </Animated.View>
-          </View>
-        )}
       </View>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  fabSearchBarContainer: {
+    position: 'absolute',
+    top: 40,
+    left: 24,
+    height: 56,
+    borderRadius: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    zIndex: 40,
+    maxWidth: 320,
+    minWidth: 160,
+  },
+  fabSearchInput: {
+    flex: 1,
+    fontSize: 17,
+    marginLeft: 8,
+    marginRight: 4,
+    backgroundColor: 'transparent',
+    color: 'black',
+  },
+  fabSearchAction: {
+    backgroundColor: '#FF385C',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  fabSearchClose: {
+    marginLeft: 4,
+    padding: 8,
+  },
+  fabContainer: {
+    position: 'absolute',
+    top: 40,
+    left: 24,
+    alignItems: 'center',
+    zIndex: 30,
+  },
+  fab: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    marginBottom: 16,
+  },
+  miniFab: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FF385C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  centeredButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 0,
+    width: '100%',
+    // Responsive position: place above the panel title
+    position: 'absolute',
+    top: undefined, // will be set in parent container
+    left: 0,
+    zIndex: 20,
+    paddingVertical: 4,
+  },
+  iconButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
   aggregatorOverlay: {
     position: 'absolute',
     left: 0,
@@ -550,4 +521,29 @@ const styles = StyleSheet.create({
   placesContainer: {
     overflow: 'hidden',
   },
+  itineraryFab: {
+    position: 'absolute',
+    left: 24,
+    bottom: 40,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FF385C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 5,
+    zIndex: 50,
+  },
+  selectedPanel: {
+    position: 'absolute',
+    left: 24,
+    bottom: 110,
+    right: 24,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 16,
+    elevation: 5,
+    zIndex: 100,
+    overflow: 'hidden',
+  }
 });

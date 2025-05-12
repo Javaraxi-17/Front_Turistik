@@ -3,6 +3,7 @@ import axios from 'axios';
 import * as Location from 'expo-location';
 import haversine from 'haversine-distance';
 import { LatLng } from 'react-native-maps';
+import { API_GOOGLE } from '@/config/api';
 
 export interface PlaceResult {
   id: string;
@@ -13,7 +14,7 @@ export interface PlaceResult {
   distance: string;
   location: LatLng;
   photoUrl?: string;            // foto de Google Places
-}
+}   
 
 /**
  * Obtiene los lugares cercanos al usuario con Google Places Nearby Search.
@@ -22,7 +23,7 @@ export interface PlaceResult {
  */
 export async function getRecommendedPlaces(
   radius = 1500,
-  type = 'restaurant',
+  type = 'restaurant,grocery_or_supermarket,museum',
   max=7
 ): Promise<PlaceResult[]> {
   /* 1 . Permisos de ubicación */
@@ -32,8 +33,9 @@ export async function getRecommendedPlaces(
   const { coords } = await Location.getCurrentPositionAsync({});
   const origin = { latitude: coords.latitude, longitude: coords.longitude };
 
-  /* 2 . Llamada a la API de Google Places */
-  const key = "aqui va la API de google"
+  /* 2 . Llamada a la API de Google Places */
+  const key = API_GOOGLE;
+  console.log(key);
   const { data } = await axios.get(
     'https://maps.googleapis.com/maps/api/place/nearbysearch/json',
     {

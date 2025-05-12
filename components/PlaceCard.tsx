@@ -19,7 +19,23 @@ interface PlaceCardProps {
   style?: any;
 }
 
-export default function PlaceCard({ place, onPress, style }: PlaceCardProps) {
+interface PlaceCardProps {
+  place: {
+    id: string;
+    name: string;
+    vicinity: string;
+    description: string;
+    rating?: number;
+    distance: string;
+    location: LatLng;
+    photoUrl?: string;
+  };
+  onPress?: () => void; // para detalles
+  onAdd?: () => void;   // para agregar a seleccionados
+  style?: any;
+}
+
+export default function PlaceCard({ place, onPress, onAdd, style }: PlaceCardProps) {
   const { isDarkMode } = useTheme();
   const textColor = isDarkMode ? '#f5f5f5' : '#333';
   const subTextColor = isDarkMode ? '#cccccc' : '#666';
@@ -51,7 +67,7 @@ export default function PlaceCard({ place, onPress, style }: PlaceCardProps) {
             </View>
           )}
 
-          <TouchableOpacity style={styles.addButton} onPress={onPress}>
+          <TouchableOpacity style={styles.addButton} onPress={onAdd}>
             <Text style={[styles.addButtonText, { color: textColor }]}>Agregar al itinerario</Text>
             <MaterialCommunityIcons name="plus-circle" size={20} color="white" />
           </TouchableOpacity>
