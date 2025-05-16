@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect  } from 'react';
 import { View, StyleSheet, Text, Animated, Dimensions, TouchableOpacity, ActivityIndicator, ScrollView, TextInput } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE, Callout } from 'react-native-maps';
@@ -13,6 +13,108 @@ import { Image } from 'react-native';
 import PlaceCard from '../components/PlaceCard';
 import SelectedPlacesPanel from '../components/SelectedPlacesPanel';
 import { useAuth } from '@/context/AuthContext';
+import * as Location from 'expo-location';
+
+import { NavigationProp } from '@react-navigation/native';
+
+// Traducción simple para mapear búsqueda a tipo Google Places:
+const typeMap: Record<string, string> = {
+  'contabilidad': 'accounting',
+  'aeropuerto': 'airport',
+  'parque de diversiones': 'amusement_park',
+  'acuario': 'aquarium',
+  'galería de arte': 'art_gallery',
+  'cajero automático': 'atm',
+  'panadería': 'bakery',
+  'banco': 'bank',
+  'bar': 'bar',
+  'salón de belleza': 'beauty_salon',
+  'tienda de bicicletas': 'bicycle_store',
+  'librería': 'book_store',
+  'bolera': 'bowling_alley',
+  'estación de autobuses': 'bus_station',
+  'cafetería': 'cafe',
+  'campamento': 'campground',
+  'concesionario de autos': 'car_dealer',
+  'alquiler de autos': 'car_rental',
+  'taller mecánico': 'car_repair',
+  'lavado de autos': 'car_wash',
+  'casino': 'casino',
+  'cementerio': 'cemetery',
+  'iglesia': 'church',
+  'ayuntamiento': 'city_hall',
+  'tienda de ropa': 'clothing_store',
+  'tienda de conveniencia': 'convenience_store',
+  'palacio de justicia': 'courthouse',
+  'dentista': 'dentist',
+  'tienda departamental': 'department_store',
+  'doctor': 'doctor',
+  'electricista': 'electrician',
+  'tienda de electrónica': 'electronics_store',
+  'embajada': 'embassy',
+  'estación de bomberos': 'fire_station',
+  'floristería': 'florist',
+  'funeraria': 'funeral_home',
+  'tienda de muebles': 'furniture_store',
+  'gasolinera': 'gas_station',
+  'gimnasio': 'gym',
+  'cuidado del cabello': 'hair_care',
+  'ferretería': 'hardware_store',
+  'templo hindú': 'hindu_temple',
+  'tienda de artículos para el hogar': 'home_goods_store',
+  'hospital': 'hospital',
+  'agencia de seguros': 'insurance_agency',
+  'joyería': 'jewelry_store',
+  'lavandería': 'laundry',
+  'abogado': 'lawyer',
+  'biblioteca': 'library',
+  'estación de tren ligero': 'light_rail_station',
+  'licorería': 'liquor_store',
+  'oficina de gobierno local': 'local_government_office',
+  'cerrajero': 'locksmith',
+  'alojamiento': 'lodging',
+  'entrega de comida': 'meal_delivery',
+  'comida para llevar': 'meal_takeaway',
+  'mezquita': 'mosque',
+  'renta de películas': 'movie_rental',
+  'cine': 'movie_theater',
+  'empresa de mudanzas': 'moving_company',
+  'museo': 'museum',
+  'club nocturno': 'night_club',
+  'pintor': 'painter',
+  'parque': 'park',
+  'estacionamiento': 'parking',
+  'tienda de mascotas': 'pet_store',
+  'farmacia': 'pharmacy',
+  'fisioterapeuta': 'physiotherapist',
+  'plomero': 'plumber',
+  'policía': 'police',
+  'oficina de correos': 'post_office',
+  'escuela primaria': 'primary_school',
+  'agencia inmobiliaria': 'real_estate_agency',
+  'restaurante': 'restaurant',
+  'contratista de techos': 'roofing_contractor',
+  'parque de casas rodantes': 'rv_park',
+  'escuela': 'school',
+  'escuela secundaria': 'secondary_school',
+  'tienda de zapatos': 'shoe_store',
+  'centro comercial': 'shopping_mall',
+  'spa': 'spa',
+  'estadio': 'stadium',
+  'almacenamiento': 'storage',
+  'tienda': 'store',
+  'estación de metro': 'subway_station',
+  'supermercado': 'supermarket',
+  'sinagoga': 'synagogue',
+  'parada de taxi': 'taxi_stand',
+  'atracción turística': 'tourist_attraction',
+  'estación de tren': 'train_station',
+  'estación de tránsito': 'transit_station',
+  'agencia de viajes': 'travel_agency',
+  'universidad': 'university',
+  'cuidado veterinario': 'veterinary_care',
+  'zoologico': 'zoo',
+};
 
 /* ---------- Estilos de mapa oscuro ---------- */
 const darkMapStyle = [
@@ -95,44 +197,104 @@ const MapComponent: React.FC<MapProps> = ({ userLocation, places }) => {
 /* ---------- Pantalla Principal ------------- */
 import { PanResponder } from 'react-native';
 
+type RootStackParamList = {
+  ItineraryDetail: { selectedPlaces: PlaceResult[] };
+  // otras rutas que tengas...
+};
+
 export default function MainScreen() {
-  // ...
-  const navigation = useNavigation();
+ const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+  const { colors, isDarkMode } = useTheme();
+
+  const handleCloseSearchBar = () => {
+  setSearchQuery(''); // limpia búsqueda
+  closeSearchBar();   // cierra barra
+};
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [places, setPlaces] = useState<PlaceResult[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const [selectedPlaces, setSelectedPlaces] = useState<PlaceResult[]>([]);
+  const [showChecklistPanel, setShowChecklistPanel] = useState(false);
+
+  const { isPanelOpen, togglePanel, placesContainerHeight } = usePanelAnimation();
+  const { isSearchVisible, openSearchBar, closeSearchBar, searchBarWidth } = useSearchBar();
+
+  const itineraryAnim = useRef(new Animated.Value(0)).current;
+
+  // Obtener la ubicación del usuario para centrar mapa y petición
+  const [userLocation, setUserLocation] = useState<{latitude:number, longitude:number} | null>(null);
+
+  // Solicitar ubicación una sola vez al montar
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        const { coords } = await Location.getCurrentPositionAsync({});
+        setUserLocation({ latitude: coords.latitude, longitude: coords.longitude });
+      } catch {
+        setUserLocation(null);
+      }
+    })();
+  }, []);
+
+  // Traduce búsqueda a tipo Google Places
+  const getTypeFromSearch = (query: string) => {
+    if (!query.trim()) return 'restaurant,grocery_or_supermarket,museum';
+    const lower = query.toLowerCase().trim();
+    return typeMap[lower] || lower;
+  };
+
+  // Llamar getRecommendedPlaces cada vez que cambia searchQuery o userLocation
+  useEffect(() => {
+    let isCancelled = false;
+    if (searchQuery.trim() !== '' && !isPanelOpen) {
+    togglePanel();
+    }
+    if (!userLocation) return;
+
+    const fetchPlaces = async () => {
+      setLoading(true);
+      try {
+        const type = getTypeFromSearch(searchQuery);
+        const results = await getRecommendedPlaces(1500, type, 15);
+        if (!isCancelled) setPlaces(results);
+      } catch (e) {
+        if (!isCancelled) setPlaces([]);
+      } finally {
+        if (!isCancelled) setLoading(false);
+      }
+    };
+    fetchPlaces();
+
+    return () => { isCancelled = true; };
+  }, [searchQuery, userLocation]);
+
+  // Navegar a detalle de itinerario
   const handleCreateItinerary = () => {
     navigation.navigate('ItineraryDetail', { selectedPlaces });
     console.log(selectedPlaces);
-  }
-  // ...
-  const [showChecklistPanel, setShowChecklistPanel] = useState(false);
-  const { colors, isDarkMode } = useTheme();
-
-  // Hook usage
-  const { userLocation, places, loading } = useLocationAndPlaces();
-  const { isPanelOpen, togglePanel, placesContainerHeight } = usePanelAnimation();
-  const { isSearchVisible, searchQuery, setSearchQuery, openSearchBar, closeSearchBar, searchBarWidth } = useSearchBar();
-
-  // Nuevo estado para los lugares seleccionados
-  const [selectedPlaces, setSelectedPlaces] = useState<PlaceResult[]>([]);
-  const [showItineraryPanel, setShowItineraryPanel] = useState(false);
-  const itineraryAnim = useRef(new Animated.Value(0)).current;
-
-  // Función para manejar la selección de un lugar
-  const handlePlaceSelect = (place: PlaceResult) => {
-    setSelectedPlaces((prev) => [...prev, place]);  // Añade el lugar seleccionado
   };
 
+  // Añadir lugar a selección
+  const handlePlaceSelect = (place: PlaceResult) => {
+    setSelectedPlaces(prev => [...prev, place]);
+  };
 
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
-        {/* Panel de Lugares Seleccionados */}
         <SelectedPlacesPanel
           visible={showChecklistPanel}
           onClose={() => setShowChecklistPanel(false)}
           selectedPlaces={selectedPlaces}
           onCreateItinerary={handleCreateItinerary}
         />
-        {/* Floating Action Buttons (FAB) */}
+
+        {/* FABs */}
         <View style={styles.fabContainer}>
           <TouchableOpacity
             style={styles.fab}
@@ -152,18 +314,8 @@ export default function MainScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Floating Button to open Itinerary Panel
-        <TouchableOpacity
-          style={styles.itineraryFab}
-          onPress={toggleItineraryPanel}
-          activeOpacity={0.85}
-          accessibilityLabel="Ver lugares agregados al itinerario"
-        >
-          <MaterialCommunityIcons name="calendar" size={26} color="white" />
-        </TouchableOpacity> */}
-
-        {/* Search Bar with Animation */}
-        {isSearchVisible ? (
+        {/* Search Bar */}
+        {isSearchVisible && (
           <Animated.View
             style={[
               styles.fabSearchBarContainer,
@@ -185,40 +337,42 @@ export default function MainScreen() {
             />
             <TouchableOpacity
               style={styles.fabSearchAction}
-              onPress={() => {/* Add your search logic here */}}
+              onPress={() => {}}
               activeOpacity={0.85}
               accessibilityLabel="Buscar"
             >
               <MaterialCommunityIcons name="arrow-right" size={22} color="white" />
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.fabSearchClose}
-              onPress={closeSearchBar}
-            >
-              <MaterialCommunityIcons name="close" size={22} color={colors.text} />
-            </TouchableOpacity>
+           <TouchableOpacity style={styles.fabSearchClose} onPress={handleCloseSearchBar}>
+         <MaterialCommunityIcons name="close" size={22} color={colors.text} />
+          </TouchableOpacity>
           </Animated.View>
-        ) : null}
+        )}
 
-        {/* Map with Markers */}
+        {/* Mapa con marcadores */}
         <MapView
           provider={PROVIDER_GOOGLE}
           style={{ flex: 1 }}
-          region={userLocation ? { ...userLocation, latitudeDelta: 0.0122, longitudeDelta: 0.0121 } : { latitude: 37.78825, longitude: -122.4324, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
+          region={
+            userLocation
+              ? { ...userLocation, latitudeDelta: 0.0122, longitudeDelta: 0.0121 }
+              : { latitude: 37.78825, longitude: -122.4324, latitudeDelta: 0.05, longitudeDelta: 0.05 }
+          }
           showsUserLocation
           customMapStyle={isDarkMode ? darkMapStyle : []}
         >
-          {/* User Location Marker */}
-          {userLocation && (
-            <Marker coordinate={userLocation} title="Tu ubicación actual" />
-          )}
+          {userLocation && <Marker coordinate={userLocation} title="Tu ubicación actual" />}
 
-          {/* Places Markers */}
           {places.map(p => (
             <Marker key={p.id} coordinate={p.location}>
               <Callout tooltip onPress={() => handlePlaceSelect(p)}>
                 <View style={{ width: 200 }}>
-                  {p.photoUrl && <Image source={{ uri: p.photoUrl }} style={{ width: '100%', height: 90, borderTopLeftRadius: 6, borderTopRightRadius: 6 }} />}
+                  {p.photoUrl && (
+                    <Image
+                      source={{ uri: p.photoUrl }}
+                      style={{ width: '100%', height: 90, borderTopLeftRadius: 6, borderTopRightRadius: 6 }}
+                    />
+                  )}
                   <View style={{ padding: 6, backgroundColor: '#fff', borderBottomLeftRadius: 6, borderBottomRightRadius: 6 }}>
                     <Text style={{ fontWeight: '600' }}>{p.name}</Text>
                     <Text>{p.description}</Text>
@@ -231,12 +385,9 @@ export default function MainScreen() {
           ))}
         </MapView>
 
-        {/* Panel with Places */}
+        {/* Panel con lista de lugares */}
         <View style={[styles.panel, { backgroundColor: colors.background }]}>
-          <TouchableOpacity
-            style={styles.panelHeader}
-            onPress={!isSearchVisible ? togglePanel : undefined}
-          >
+          <TouchableOpacity style={styles.panelHeader} onPress={!isSearchVisible ? togglePanel : undefined}>
             <View style={styles.headerContent}>
               <Text style={[styles.panelTitle, { color: colors.text }]}>Lugares Recomendados</Text>
               <MaterialCommunityIcons
@@ -248,18 +399,25 @@ export default function MainScreen() {
           </TouchableOpacity>
 
           <Animated.View style={[styles.placesContainer, { height: placesContainerHeight }]}>
-            {isPanelOpen && (loading ? <ActivityIndicator style={{ marginTop: 20 }} color={colors.primary} /> : (
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {places.map(place => <PlaceCard key={place.id} place={place} onAdd={() => handlePlaceSelect(place)} />)}
-              </ScrollView>
-            ))}
+            {isPanelOpen && (
+              loading
+                ? <ActivityIndicator style={{ marginTop: 20 }} color={colors.primary} />
+                : (
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    {places.map(place => (
+                      <PlaceCard key={place.id} place={place} onAdd={() => handlePlaceSelect(place)} />
+                    ))}
+                  </ScrollView>
+                )
+            )}
           </Animated.View>
         </View>
-
       </View>
     </SafeAreaProvider>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   fabSearchBarContainer: {

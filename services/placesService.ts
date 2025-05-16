@@ -24,7 +24,7 @@ export interface PlaceResult {
 export async function getRecommendedPlaces(
   radius = 1500,
   type = 'restaurant,grocery_or_supermarket,museum',
-  max=7
+  max=15
 ): Promise<PlaceResult[]> {
   /* 1 . Permisos de ubicación */
   const { status } = await Location.requestForegroundPermissionsAsync();
