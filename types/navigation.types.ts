@@ -8,6 +8,9 @@ export type RootStackParamList = {
     TripPreferences: undefined;
     MainScreen: undefined;
     Settings: undefined;
+    AnswerPersonalizedQuestion: { questionId: number; questionText: string };
+    ItineraryDetail: { selectedPlaces: any[] };
+    ItineraryResultScreen: { aiResult: string } | undefined;
 };
 
 export type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;

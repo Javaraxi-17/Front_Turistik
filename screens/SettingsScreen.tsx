@@ -1,56 +1,39 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Switch } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Switch, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../types/navigation.types';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 import { useTheme } from '@/context/ThemeContext';
+import { fetchQuestions } from '@/services/questionService';
+import { Question } from '@/types/question.types';
 
 export default function SettingsScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { isDarkMode, toggleTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<'preferences' | 'trip'>('preferences');
+  // Estado para preguntas personalized
+  const [personalizedQuestions, setPersonalizedQuestions] = useState<Question[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [onboardingQuestions, setOnboardingQuestions] = useState([
-    {
-      question: '¿Cómo prefieres moverte en tus viajes?',
-      options: ['Caminando', 'Auto', 'Transporte público', 'Bicicleta', 'Barco'],
-      enabled: true
-    },
-    {
-      question: '¿Tienes alguna preferencia gastronómica?',
-      options: ['Sin restricciones', 'Vegetariano', 'Vegano', 'Cocina local'],
-      enabled: true
-    },
-    {
-      question: '¿Cuál es tu presupuesto habitual?',
-      options: ['Bajo', 'Medio', 'Alto'],
-      enabled: true
-    }
-  ]);
-
-  const [tripQuestions, setTripQuestions] = useState([
-    {
-      question: '¿Cuánto tiempo tienes disponible para este viaje?',
-      options: ['Menos de 4 horas', 'Medio día', 'Un día completo', 'Más de un día'],
-      enabled: true
-    },
-    {
-      question: '¿Viajas solo o acompañado?',
-      options: ['Solo', 'En pareja', 'En familia', 'Con amigos'],
-      enabled: true
-    },
-    {
-      question: '¿Qué nivel de actividad física prefieres?',
-      options: ['Relajado', 'Moderado', 'Intenso'],
-      enabled: true
-    },
-    {
-      question: '¿Te gustaría incluir opciones de comida?',
-      options: ['Sí', 'No'],
-      enabled: true
-    }
-  ]);
+  useEffect(() => {
+    const fetchPersonalized = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const allQuestions = await fetchQuestions();
+        const personalized = allQuestions.filter(q => q.Answer_Type === 'personalized' && (q.Is_Active === true || q.Is_Active === 1 || q.Is_Active === '1' || q.Is_Active === 'true' || q.Is_Active === 'True'));
+        setPersonalizedQuestions(personalized);
+      } catch (err) {
+        setError('Error al cargar preguntas personalizadas.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPersonalized();
+  }, []);
 
   const handleSaveQuestions = () => {
     // Aquí iría la lógica para guardar las preguntas en el backend
@@ -70,86 +53,42 @@ export default function SettingsScreen() {
         <Text style={[styles.title, isDarkMode && styles.darkText]}>Configuración</Text>
       </View>
 
-      <View style={[styles.tabs, isDarkMode && styles.darkTabs]}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'preferences' && styles.activeTab]}
-          onPress={() => setActiveTab('preferences')}
-        >
-          <Text style={[styles.tabText, activeTab === 'preferences' && styles.activeTabText]}>
-            Preferencias
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'trip' && styles.activeTab]}
-          onPress={() => setActiveTab('trip')}
-        >
-          <Text style={[styles.tabText, activeTab === 'trip' && styles.activeTabText]}>
-            Planificación
-          </Text>
-        </TouchableOpacity>
-      </View>
-
       <ScrollView style={styles.content}>
-        {activeTab === 'preferences' ? (
-          <>
-            <View style={[styles.section, isDarkMode && styles.darkSection]}>
-              <Text style={[styles.sectionTitle, isDarkMode && styles.darkText]}>Apariencia</Text>
-              <View style={styles.switchContainer}>
-                <Text style={[styles.switchLabel, isDarkMode && styles.darkText]}>Modo Oscuro</Text>
-                <Switch
-                  value={isDarkMode}
-                  onValueChange={toggleTheme}
-                />
-              </View>
-            </View>
-            <View style={[styles.section, isDarkMode && styles.darkSection]}>
-              <Text style={[styles.sectionTitle, isDarkMode && styles.darkText]}>Preguntas de Preferencias</Text>
-              {onboardingQuestions.map((item, index) => (
-                <View key={index} style={[styles.questionContainer, isDarkMode && styles.darkQuestionContainer]}>
-                  <View style={styles.questionHeader}>
-                    <View style={styles.questionContent}>
-                      <Text style={[styles.questionLabel, isDarkMode && styles.darkText]}>{item.question}</Text>
-                      <Text style={[styles.optionsText, isDarkMode && styles.darkText]}>
-                        {item.options.join(', ')}
-                      </Text>
-                    </View>
-                    <Switch
-                      value={item.enabled}
-                      onValueChange={(value) => {
-                        const newQuestions = [...onboardingQuestions];
-                        newQuestions[index].enabled = value;
-                        setOnboardingQuestions(newQuestions);
-                      }}
-                    />
-                  </View>
-                </View>
-              ))}
-            </View>
-          </>
-        ) : (
-          <View style={[styles.section, isDarkMode && styles.darkSection]}>
-            {tripQuestions.map((item, index) => (
-              <View key={index} style={[styles.questionContainer, isDarkMode && styles.darkQuestionContainer]}>
+        <View style={[styles.section, isDarkMode && styles.darkSection]}>
+          <Text style={[styles.sectionTitle, isDarkMode && styles.darkText]}>Apariencia</Text>
+          <View style={styles.switchContainer}>
+            <Text style={[styles.switchLabel, isDarkMode && styles.darkText]}>Modo Oscuro</Text>
+            <Switch
+              value={isDarkMode}
+              onValueChange={toggleTheme}
+            />
+          </View>
+        </View>
+        <View style={[styles.section, isDarkMode && styles.darkSection]}>
+          <Text style={[styles.sectionTitle, isDarkMode && styles.darkText]}>Preguntas de Preferencias Personalizadas</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color={isDarkMode ? '#fff' : '#FF385C'} style={{ marginTop: 20 }} />
+          ) : error ? (
+            <Text style={{ color: 'red', marginTop: 20 }}>{error}</Text>
+          ) : personalizedQuestions.length === 0 ? (
+            <Text style={{ marginTop: 20 }}>No hay preguntas personalizadas disponibles.</Text>
+          ) : (
+            personalizedQuestions.map((q, idx) => (
+              <TouchableOpacity
+                key={q.Question_ID}
+                style={[styles.questionContainer, isDarkMode && styles.darkQuestionContainer, styles.questionButton]}
+                onPress={() => navigation.navigate('AnswerPersonalizedQuestion', { questionId: q.Question_ID, questionText: q.Question_Text })}
+                activeOpacity={0.7}
+              >
                 <View style={styles.questionHeader}>
                   <View style={styles.questionContent}>
-                    <Text style={[styles.questionLabel, isDarkMode && styles.darkText]}>{item.question}</Text>
-                    <Text style={[styles.optionsText, isDarkMode && styles.darkText]}>
-                      {item.options.join(', ')}
-                    </Text>
+                    <Text style={[styles.questionLabel, isDarkMode && styles.darkText]}>{q.Question_Text}</Text>
                   </View>
-                  <Switch
-                    value={item.enabled}
-                    onValueChange={(value) => {
-                      const newQuestions = [...tripQuestions];
-                      newQuestions[index].enabled = value;
-                      setTripQuestions(newQuestions);
-                    }}
-                  />
                 </View>
-              </View>
-            ))}
-          </View>
-        )}
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
       </ScrollView>
 
       <View style={[styles.footer, isDarkMode && styles.darkFooter]}>
@@ -254,6 +193,11 @@ const styles = StyleSheet.create({
     padding: 15,
     backgroundColor: 'white',
     borderRadius: 8,
+  },
+  questionButton: {
+    borderWidth: 1,
+    borderColor: '#FF385C',
+    marginBottom: 10,
   },
   darkQuestionContainer: {
     backgroundColor: '#333',

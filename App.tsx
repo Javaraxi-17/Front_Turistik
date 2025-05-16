@@ -12,6 +12,7 @@ import FirstTimeProfileScreen from "./screens/FirstTimeProfileScreen";
 import TripPreferencesScreen from "./screens/TripPreferencesScreen";
 import MainScreen from './screens/MainScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import AnswerPersonalizedQuestionScreen from './screens/AnswerPersonalizedQuestionScreen';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import Header from './components/Header';
@@ -52,6 +53,7 @@ function AppStack() {
       <Stack.Screen name="MainScreen" component={MainScreen} />
       <Stack.Screen name="ItineraryDetail" component={require('./screens/ItineraryDetailScreen').default} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="AnswerPersonalizedQuestion" component={AnswerPersonalizedQuestionScreen} />
       <Stack.Screen name="ItineraryResultScreen" component={ItineraryResultScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );

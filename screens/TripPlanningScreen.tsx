@@ -33,22 +33,10 @@ export default function TripPlanningScreen() {
 
   const steps = [
     {
-      question: '¿Cuánto tiempo tienes disponible para este viaje?',
-      options: [
-        { label: 'Menos de 4 horas', icon: 'clock-outline', value: 'short' },
-        { label: 'Medio día', icon: 'clock-afternoon', value: 'half_day' },
-        { label: 'Un día completo', icon: 'calendar-today', value: 'full_day' },
-        { label: 'Más de un día', icon: 'calendar-week', value: 'multiple_days' }
-      ],
-      key: 'duration'
-    },
-    {
       question: '¿Viajas solo o acompañado?',
       options: [
         { label: 'Solo', icon: 'account', value: 'alone' },
-        { label: 'En pareja', icon: 'account-heart', value: 'couple' },
-        { label: 'En familia', icon: 'account-group', value: 'family' },
-        { label: 'Con amigos', icon: 'account-multiple', value: 'friends' }
+        { label: 'Acompañado', icon: 'account-multiple', value: 'friends' }
       ],
       key: 'companions'
     },
