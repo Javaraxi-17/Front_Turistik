@@ -34,10 +34,14 @@ export default function ItineraryResultScreen() {
 
   if (!parsed || !parsed.metadata || !parsed.lugares) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>No se pudo mostrar el itinerario</Text>
-        <Text style={styles.errorText}>El resultado no tiene el formato esperado.</Text>
-        {parseError ? <Text style={{color:'red', fontSize:13, marginBottom:8}}>{parseError}</Text> : null}
+      <View style={[styles.container, { flex: 1, justifyContent: 'center', alignItems: 'center' }]}> 
+        <Text style={[styles.title, { maxWidth: '85%', textAlign: 'center', flexWrap: 'wrap' }]}>No se pudo mostrar el itinerario</Text>
+        <Text style={[styles.errorText, { maxWidth: '85%', textAlign: 'center', flexWrap: 'wrap' }]}>El resultado no tiene el formato esperado.</Text>
+        {parseError ? (
+          <ScrollView style={{ maxHeight: 120, maxWidth: '85%', marginBottom: 8 }}>
+            <Text style={{ color: 'red', fontSize: 13, textAlign: 'center', flexWrap: 'wrap' }}>{parseError}</Text>
+          </ScrollView>
+        ) : null}
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Text style={styles.backBtnText}>Volver</Text>
         </TouchableOpacity>
@@ -57,18 +61,25 @@ export default function ItineraryResultScreen() {
           <Text style={styles.desc}>{parsed.metadata.descripcion_general}</Text>
         )}
       </View>
-      <View style={styles.metaRowBig}>
-        <View style={styles.metaCard}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={160} // Ajusta este valor según el ancho de la tarjeta + margen
+        decelerationRate="fast"
+        contentContainerStyle={{ paddingHorizontal: 12 }}
+        style={{ marginBottom: 24 }}
+      >
+        <View style={[styles.metaCard, { marginRight: 12 }]}> 
           <Text style={styles.metaIcon}>⏱️</Text>
           <Text style={styles.metaBigLabel}>Duración</Text>
           <Text style={styles.metaBigValue}>{parsed.metadata.total_duracion}</Text>
         </View>
-        <View style={styles.metaCard}>
+        <View style={styles.metaCard}> 
           <Text style={styles.metaIcon}>📏</Text>
           <Text style={styles.metaBigLabel}>Distancia</Text>
           <Text style={styles.metaBigValue}>{parsed.metadata.total_distancia}</Text>
         </View>
-      </View>
+      </ScrollView>
       <Text style={styles.sectionTitle}>Lugares a visitar</Text>
       {Object.entries(parsed.lugares).map(([id, lugar]: any) => (
         <View key={id} style={styles.card}>

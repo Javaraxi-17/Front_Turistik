@@ -91,8 +91,8 @@ export const register = async (userData: RegisterData): Promise<AuthResponse> =>
       Email: userData.Email,
       Password: userData.Password,
     });
-    // Guardar userId en cookie
-    document.cookie = `userId=${loginData.user.id}; path=/;`;
+    // Guardar userId en AsyncStorage (igual que en login)
+    await AsyncStorage.setItem('userId', loginData.user.id.toString());
     return loginData;
   } catch (error: any) {
     // Manejo específico para errores de AbortController
