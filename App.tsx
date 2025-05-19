@@ -17,6 +17,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import Header from './components/Header';
 import ItineraryResultScreen from './screens/ItineraryResultScreen';
+import ItineraryHistoryScreen from './screens/ItineraryHistoryScreen';
+import ItineraryHistoryDetailScreen from './screens/itineraryhistorydetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -55,6 +57,8 @@ function AppStack() {
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="AnswerPersonalizedQuestion" component={AnswerPersonalizedQuestionScreen} />
       <Stack.Screen name="ItineraryResultScreen" component={ItineraryResultScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ItineraryHistory" component={ItineraryHistoryScreen} />
+      <Stack.Screen name="ItineraryHistoryDetail" component={ItineraryHistoryDetailScreen} />
     </Stack.Navigator>
   );
 }

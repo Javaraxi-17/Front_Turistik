@@ -17,6 +17,8 @@ import * as Location from 'expo-location';
 
 import { NavigationProp } from '@react-navigation/native';
 
+import { getRecomendacionFromUserAnswers, getRandomPlaceTypeFromResponse } from '../services/aiService';
+import { RootStackParamList } from '../types/navigation';
 // Traducción simple para mapear búsqueda a tipo Google Places:
 const typeMap: Record<string, string> = {
   'contabilidad': 'accounting',
@@ -39,7 +41,6 @@ const typeMap: Record<string, string> = {
   'alquiler de autos': 'car_rental',
   'taller mecánico': 'car_repair',
   'lavado de autos': 'car_wash',
-  'casino': 'casino',
   'cementerio': 'cemetery',
   'iglesia': 'church',
   'ayuntamiento': 'city_hall',
@@ -199,11 +200,12 @@ import { PanResponder } from 'react-native';
 
 type RootStackParamList = {
   ItineraryDetail: { selectedPlaces: PlaceResult[] };
+  ItineraryHistory: undefined;
   // otras rutas que tengas...
 };
 
 export default function MainScreen() {
- const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   const { colors, isDarkMode } = useTheme();
 
@@ -242,8 +244,19 @@ export default function MainScreen() {
   }, []);
 
   // Traduce búsqueda a tipo Google Places
-  const getTypeFromSearch = (query: string) => {
-    if (!query.trim()) return 'restaurant,grocery_or_supermarket,museum';
+  const getTypeFromSearch = async (query: string): Promise<string> => {
+    if (!query.trim()) {
+      try {
+        const recomendacion = await getRecomendacionFromUserAnswers();
+        console.log(recomendacion);
+        const recomendado = getRandomPlaceTypeFromResponse(recomendacion);
+        if (recomendado) return recomendado;
+        else return 'restaurant,grocery_or_supermarket,museum';
+      } catch (e) {
+        console.warn('No se pudo obtener tipo recomendado, usando default:', e);
+        return 'restaurant,grocery_or_supermarket,museum';
+      }
+    }
     const lower = query.toLowerCase().trim();
     return typeMap[lower] || lower;
   };
@@ -259,7 +272,7 @@ export default function MainScreen() {
     const fetchPlaces = async () => {
       setLoading(true);
       try {
-        const type = getTypeFromSearch(searchQuery);
+        const type = await getTypeFromSearch(searchQuery);
         const results = await getRecommendedPlaces(1500, type, 15);
         if (!isCancelled) setPlaces(results);
       } catch (e) {
@@ -284,6 +297,10 @@ export default function MainScreen() {
     setSelectedPlaces(prev => [...prev, place]);
   };
 
+  const handleClearPlaces = () => {
+    setSelectedPlaces([]);
+  };
+
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
@@ -292,6 +309,7 @@ export default function MainScreen() {
           onClose={() => setShowChecklistPanel(false)}
           selectedPlaces={selectedPlaces}
           onCreateItinerary={handleCreateItinerary}
+          onClearPlaces={handleClearPlaces}
         />
 
         {/* FABs */}
@@ -420,14 +438,19 @@ export default function MainScreen() {
 
 
 const styles = StyleSheet.create({
+
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
   fabSearchBarContainer: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: 40,
     left: 24,
     height: 56,
     borderRadius: 28,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
     paddingHorizontal: 8,
     zIndex: 40,
     maxWidth: 320,
@@ -446,8 +469,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     width: 40,
     height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     marginLeft: 8,
   },
   fabSearchClose: {
@@ -455,7 +478,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   fabContainer: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: 40,
     left: 24,
     alignItems: 'center',

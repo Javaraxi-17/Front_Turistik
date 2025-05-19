@@ -37,6 +37,8 @@ export default function ItineraryDetailScreen() {
       const result = await generateItineraryAIFromPlaces(places, Number(userId));
       const aiText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (aiText) {
+        // Limpiar la lista de lugares
+        setPlaces([]);
         // @ts-ignore
         navigation.navigate('ItineraryResultScreen', { aiResult: aiText });
       } else {
@@ -94,8 +96,11 @@ export default function ItineraryDetailScreen() {
           <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
           <Text style={styles.footerBtnText}>Regresar</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={[styles.footerBtn, { backgroundColor: '#e3342f', marginLeft: 10 }]} onPress={() => setPlaces([])}>
+          <MaterialCommunityIcons name="trash-can" size={22} color="#fff" />
+          <Text style={styles.footerBtnText}>Limpiar</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={[styles.footerBtn, { backgroundColor: '#3b82f6', marginLeft: 10 }]} onPress={handleStart}>
-
           <MaterialCommunityIcons name="map-marker-path" size={22} color="#fff" />
           <Text style={styles.footerBtnText}>Iniciar</Text>
         </TouchableOpacity>
@@ -183,19 +188,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 14,
     borderTopWidth: 1,
     borderColor: '#eee',
     backgroundColor: '#fff',
+    paddingVertical: 8,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   footerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FF385C',
     borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    marginHorizontal: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginHorizontal: 12,
   },
   footerBtnText: {
     color: '#fff',

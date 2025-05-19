@@ -6,4 +6,6 @@ export type RootStackParamList = {
   FirstTimeProfile: undefined;
   TripPreferences: undefined;
   MainScreen: undefined;
+  ItineraryHistory: undefined;
+  ItineraryDetail: { itinerary: any };
 };

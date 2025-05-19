@@ -91,17 +91,17 @@ export default function ItineraryResultScreen() {
         </View>
       ))}
       <View style={styles.buttonRow}>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           activeOpacity={0.7}
           style={[styles.actionBtn, styles.saveBtn]}
           onPress={() => alert('Itinerario guardado')}
         >
           <Text style={styles.actionBtnText}>Guardar</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         <TouchableOpacity
           activeOpacity={0.7}
           style={[styles.actionBtn, styles.backBtn]}
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate('MainScreen')}
         >
           <Text style={styles.actionBtnText}>Volver</Text>
         </TouchableOpacity>

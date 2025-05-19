@@ -8,9 +8,10 @@ interface SelectedPlacesPanelProps {
   onClose: () => void;
   selectedPlaces: PlaceResult[];
   onCreateItinerary?: () => void;
+  onClearPlaces?: () => void;
 }
 
-const SelectedPlacesPanel: React.FC<SelectedPlacesPanelProps> = ({ visible, onClose, selectedPlaces, onCreateItinerary }) => {
+const SelectedPlacesPanel: React.FC<SelectedPlacesPanelProps> = ({ visible, onClose, selectedPlaces, onCreateItinerary, onClearPlaces }) => {
   const panelAnim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
@@ -55,9 +56,15 @@ const SelectedPlacesPanel: React.FC<SelectedPlacesPanelProps> = ({ visible, onCl
           )}
         </ScrollView>
         {selectedPlaces.length > 0 && (
-          <TouchableOpacity style={styles.createButton} onPress={onCreateItinerary}>
-            <Text style={styles.createButtonText}>Siguiente</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity style={styles.clearButton} onPress={onClearPlaces}>
+              <MaterialCommunityIcons name="trash-can" size={24} color="#fff" />
+              <Text style={styles.clearButtonText}>Limpiar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.createButton} onPress={onCreateItinerary}>
+              <Text style={styles.createButtonText}>Siguiente</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
       </Animated.View>
@@ -89,6 +96,34 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
     minHeight: 120,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderColor: '#eee',
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  clearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF385C',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginHorizontal: 12,
+  },
+  clearButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    marginLeft: 8,
+    fontSize: 16,
   },
   header: {
     flexDirection: 'row',

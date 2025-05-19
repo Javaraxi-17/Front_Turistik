@@ -21,11 +21,27 @@ export interface PlaceResult {
  * @param radius  Distancia en metros (por defecto 1500 m).
  * @param type    Tipo de lugar (restaurant, park, tourist_attraction, etc.).
  */
+import { getRecomendacionFromUserAnswers, getRandomPlaceTypeFromResponse } from './aiService';
+
 export async function getRecommendedPlaces(
   radius = 1500,
-  type = 'restaurant,grocery_or_supermarket,museum',
+  type?: string,
   max=15
 ): Promise<PlaceResult[]> {
+  // Si no se pasa type, obtenerlo dinámicamente del agente
+  let actualType = type;
+  if (!actualType) {
+    try {
+      const recomendacion = await getRecomendacionFromUserAnswers();
+      const recomendado = getRandomPlaceTypeFromResponse(recomendacion);
+      if (recomendado) actualType = recomendado;
+      else actualType = 'restaurant,grocery_or_supermarket,museum';
+    } catch (e) {
+      console.log('No se pudo obtener tipo recomendado, usando default:', e);
+      actualType = 'restaurant,grocery_or_supermarket,museum';
+    }
+  }
+
   /* 1 . Permisos de ubicación */
   const { status } = await Location.requestForegroundPermissionsAsync();
   if (status !== 'granted') return [];
