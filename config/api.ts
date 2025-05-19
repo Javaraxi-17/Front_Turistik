@@ -11,9 +11,9 @@ const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_API_KEY;
 // Para correr en emulador Android, usa 10.0.2.2 que apunta al localhost de tu máquina
 // Para correr en dispositivo real, usa la IP real de tu computadora en la red
 // Para iOS puedes usar localhost o la IP real de tu computadora
+export const API_BASE_URL = 'https://api-turistik-original-1015484149970.us-central1.run.app';
 // export const API_BASE_URL = 'https://api-turistik-original-1015484149970.us-central1.run.app';
-// export const API_BASE_URL = 'https://api-turistik-original-1015484149970.us-central1.run.app';
-export const API_BASE_URL = 'http://192.168.31.135:3000';
+// export const API_BASE_URL = 'http://192.168.31.135:3000';
 console.log(GOOGLE_API_KEY);
 // console.log(GEMINI_API_KEY);
 export const API_GOOGLE = GOOGLE_API_KEY;
