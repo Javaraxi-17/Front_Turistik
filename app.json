@@ -24,6 +24,11 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "description": "Quickly generate React Native components with AI"
+    "description": "Quickly generate React Native components with AI",
+    "extra": {
+      "eas": {
+        "projectId": "0ead0637-eee6-49ab-88ee-9885afb119a1"
+      }
+    }
   }
 }

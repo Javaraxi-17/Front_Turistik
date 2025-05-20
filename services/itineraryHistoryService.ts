@@ -43,9 +43,14 @@ export const getItineraryHistory = async (userId: number): Promise<ItineraryHist
   try {
     const response = await axios.get(`${API_BASE_URL}/api/placesInRoutes/detailed/${userId}`);
     console.log(response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching itinerary history:', error);
-    throw error;
+    // Si no hay datos o es un array vacío, retornar un array vacío
+    return response.data || [];
+  } catch (error: any) {
+    // No mostrar error en consola si es un error 500 (no hay itinerarios)
+    if (error.response?.status !== 500) {
+      console.error('Error fetching itinerary history:', error);
+    }
+    // En caso de error, retornar un array vacío
+    return [];
   }
 };
