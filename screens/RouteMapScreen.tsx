@@ -7,8 +7,10 @@ import { API_GOOGLE } from '@/config/api';
 import * as Location from 'expo-location';
 
 interface RouteMapScreenParams {
-  startPlaceName: string;
-  endPlaceName: string;
+  places: Array<{
+    name: string;
+    order: number;
+  }>;
 }
 
 type RouteMapScreenRouteProp = RouteProp<{
@@ -20,12 +22,16 @@ interface Location {
   longitude: number;
 }
 
+interface PlaceLocation extends Location {
+  name: string;
+  order: number;
+}
+
 export default function RouteMapScreen() {
   const route = useRoute<RouteMapScreenRouteProp>();
   const { isDarkMode } = useTheme();
   const [loading, setLoading] = useState(true);
-  const [startLocation, setStartLocation] = useState<Location | null>(null);
-  const [endLocation, setEndLocation] = useState<Location | null>(null);
+  const [placeLocations, setPlaceLocations] = useState<PlaceLocation[]>([]);
   const [userLocation, setUserLocation] = useState<Location | null>(null);
 
   useEffect(() => {
@@ -48,7 +54,7 @@ export default function RouteMapScreen() {
       }
     };
 
-    const getPlaceCoordinates = async (placeName: string, userLoc: Location) => {
+    const getPlaceCoordinates = async (placeName: string, userLoc: Location, order: number) => {
       try {
         // First, get the city name from user's location
         const reverseGeocode = await fetch(
@@ -76,7 +82,12 @@ export default function RouteMapScreen() {
         
         if (data.results && data.results.length > 0) {
           const { lat, lng } = data.results[0].geometry.location;
-          return { latitude: lat, longitude: lng };
+          return {
+            latitude: lat,
+            longitude: lng,
+            name: placeName,
+            order
+          };
         }
         return null;
       } catch (error) {
@@ -94,18 +105,28 @@ export default function RouteMapScreen() {
       }
       
       setUserLocation(userLoc);
-      const start = await getPlaceCoordinates(route.params.startPlaceName, userLoc);
-      const end = await getPlaceCoordinates(route.params.endPlaceName, userLoc);
+
+      // Sort places by order
+      const sortedPlaces = [...route.params.places].sort((a, b) => a.order - b.order);
       
-      setStartLocation(start);
-      setEndLocation(end);
+      // Get coordinates for each place
+      const locations = await Promise.all(
+        sortedPlaces.map(place => getPlaceCoordinates(place.name, userLoc, place.order))
+      );
+
+      // Filter out any null results and sort by order
+      const validLocations = locations
+        .filter((loc): loc is PlaceLocation => loc !== null)
+        .sort((a, b) => a.order - b.order);
+
+      setPlaceLocations(validLocations);
       setLoading(false);
     };
 
     fetchCoordinates();
-  }, [route.params.startPlaceName, route.params.endPlaceName]);
+  }, [route.params.places]);
 
-  if (loading || !startLocation || !endLocation) {
+  if (loading || placeLocations.length === 0) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
         <ActivityIndicator size="large" color="#3b82f6" />
@@ -114,8 +135,12 @@ export default function RouteMapScreen() {
   }
 
   // Calculate center point for initial region
-  const centerLat = (startLocation.latitude + endLocation.latitude) / 2;
-  const centerLng = (startLocation.longitude + endLocation.longitude) / 2;
+  const centerLat = placeLocations.reduce((sum, loc) => sum + loc.latitude, 0) / placeLocations.length;
+  const centerLng = placeLocations.reduce((sum, loc) => sum + loc.longitude, 0) / placeLocations.length;
+
+  // Calculate the maximum distance between any two points to set the zoom level
+  const maxLatDiff = Math.max(...placeLocations.map(loc => loc.latitude)) - Math.min(...placeLocations.map(loc => loc.latitude));
+  const maxLngDiff = Math.max(...placeLocations.map(loc => loc.longitude)) - Math.min(...placeLocations.map(loc => loc.longitude));
 
   return (
     <View style={styles.container}>
@@ -125,8 +150,8 @@ export default function RouteMapScreen() {
         initialRegion={{
           latitude: centerLat,
           longitude: centerLng,
-          latitudeDelta: Math.abs(startLocation.latitude - endLocation.latitude) * 1.5,
-          longitudeDelta: Math.abs(startLocation.longitude - endLocation.longitude) * 1.5,
+          latitudeDelta: maxLatDiff * 1.5,
+          longitudeDelta: maxLngDiff * 1.5,
         }}
         customMapStyle={isDarkMode ? darkMapStyle : []}
       >
@@ -137,23 +162,26 @@ export default function RouteMapScreen() {
             pinColor="blue"
           />
         )}
-        <Marker
-          coordinate={startLocation}
-          title={route.params.startPlaceName}
-          description="Punto de inicio"
-          pinColor="green"
-        />
-        <Marker
-          coordinate={endLocation}
-          title={route.params.endPlaceName}
-          description="Punto final"
-          pinColor="red"
-        />
-        <Polyline
-          coordinates={[startLocation, endLocation]}
-          strokeColor="#3b82f6"
-          strokeWidth={3}
-        />
+        
+        {placeLocations.map((location, index) => (
+          <Marker
+            key={location.order}
+            coordinate={location}
+            title={`${location.order}. ${location.name}`}
+            description={index === 0 ? "Punto de inicio" : index === placeLocations.length - 1 ? "Punto final" : `Parada ${index + 1}`}
+            pinColor={index === 0 ? "green" : index === placeLocations.length - 1 ? "red" : "orange"}
+          />
+        ))}
+
+        {/* Draw lines between consecutive points */}
+        {placeLocations.slice(0, -1).map((location, index) => (
+          <Polyline
+            key={`${location.order}-${placeLocations[index + 1].order}`}
+            coordinates={[location, placeLocations[index + 1]]}
+            strokeColor="#3b82f6"
+            strokeWidth={3}
+          />
+        ))}
       </MapView>
     </View>
   );

@@ -9,7 +9,9 @@ export type RootStackParamList = {
   ItineraryHistory: undefined;
   ItineraryDetail: { itinerary: any };
   RouteMap: {
-    startPlaceName: string;
-    endPlaceName: string;
+    places: Array<{
+      name: string;
+      order: number;
+    }>;
   };
 };

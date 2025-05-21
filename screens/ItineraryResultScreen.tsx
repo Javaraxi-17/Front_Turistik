@@ -108,11 +108,13 @@ export default function ItineraryResultScreen() {
           style={[styles.actionBtn, styles.mapBtn]}
           onPress={() => {
             const places = Object.entries(parsed.lugares) as [string, Place][];
-            const firstPlace = places[0][1];
-            const lastPlace = places[places.length - 1][1];
+            const sortedPlaces = places.map(([id, place]) => ({
+              name: place.nombre,
+              order: parseInt(id)
+            })).sort((a, b) => a.order - b.order);
+
             navigation.navigate('RouteMap', {
-              startPlaceName: firstPlace.nombre,
-              endPlaceName: lastPlace.nombre
+              places: sortedPlaces
             });
           }}
         >
