@@ -1,17 +1,29 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { RootStackParamList } from '../types/navigation';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 interface ItineraryResultScreenParams {
   aiResult: string;
+}
+
+interface Place {
+  nombre: string;
+  costo_promedio: string;
+  recomendaciones: string;
+  notas: string;
+  coordenadas: string;
 }
 
 type ItineraryResultScreenRouteProp = RouteProp<{
   params: ItineraryResultScreenParams;
 }, 'params'>;
 
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 export default function ItineraryResultScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const route = useRoute<ItineraryResultScreenRouteProp>();
   let parsed: any = null;
   console.log("parsed",parsed);
@@ -91,13 +103,21 @@ export default function ItineraryResultScreen() {
         </View>
       ))}
       <View style={styles.buttonRow}>
-        {/* <TouchableOpacity
+        <TouchableOpacity
           activeOpacity={0.7}
-          style={[styles.actionBtn, styles.saveBtn]}
-          onPress={() => alert('Itinerario guardado')}
+          style={[styles.actionBtn, styles.mapBtn]}
+          onPress={() => {
+            const places = Object.entries(parsed.lugares) as [string, Place][];
+            const firstPlace = places[0][1];
+            const lastPlace = places[places.length - 1][1];
+            navigation.navigate('RouteMap', {
+              startPlaceName: firstPlace.nombre,
+              endPlaceName: lastPlace.nombre
+            });
+          }}
         >
-          <Text style={styles.actionBtnText}>Guardar</Text>
-        </TouchableOpacity> */}
+          <Text style={styles.actionBtnText}>Ver Ruta</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           activeOpacity={0.7}
           style={[styles.actionBtn, styles.backBtn]}
@@ -219,24 +239,29 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#222',
   },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+    marginTop: 16,
+    marginBottom: 0,
+  },
   actionBtn: {
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 36,
-    marginHorizontal: 4,
     elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.09,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 120,
-    marginTop: 0,
-    marginBottom: 0,
+    marginHorizontal: 4,
   },
-  saveBtn: {
-    backgroundColor: '#2563eb',
+  actionBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 18,
+    letterSpacing: 0.5,
+  },
+  mapBtn: {
+    backgroundColor: '#10b981',
   },
   backBtn: {
     backgroundColor: '#3b82f6',
@@ -251,27 +276,5 @@ const styles = StyleSheet.create({
     marginVertical: 12,
     fontSize: 16,
     textAlign: 'center',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
-    marginTop: 16,
-    marginBottom: 0,
-  },
-  saveBtn: {
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 36,
-    elevation: 2,
-    marginHorizontal: 4,
-  },
-  actionBtnText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 18,
-    letterSpacing: 0.5,
   },
 });

@@ -8,4 +8,8 @@ export type RootStackParamList = {
   MainScreen: undefined;
   ItineraryHistory: undefined;
   ItineraryDetail: { itinerary: any };
+  RouteMap: {
+    startPlaceName: string;
+    endPlaceName: string;
+  };
 };

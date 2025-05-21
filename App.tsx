@@ -19,6 +19,7 @@ import Header from './components/Header';
 import ItineraryResultScreen from './screens/ItineraryResultScreen';
 import ItineraryHistoryScreen from './screens/ItineraryHistoryScreen';
 import ItineraryHistoryDetailScreen from './screens/itineraryhistorydetailScreen';
+import RouteMapScreen from './screens/RouteMapScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -35,6 +36,7 @@ function AuthStack() {
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="ItineraryResultScreen" component={ItineraryResultScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="RouteMap" component={RouteMapScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
@@ -59,6 +61,7 @@ function AppStack() {
       <Stack.Screen name="ItineraryResultScreen" component={ItineraryResultScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ItineraryHistory" component={ItineraryHistoryScreen} />
       <Stack.Screen name="ItineraryHistoryDetail" component={ItineraryHistoryDetailScreen} />
+      <Stack.Screen name="RouteMap" component={RouteMapScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
