@@ -17,12 +17,12 @@ type RouteMapScreenRouteProp = RouteProp<{
   params: RouteMapScreenParams;
 }, 'params'>;
 
-interface Location {
+interface LocationType {
   latitude: number;
   longitude: number;
 }
 
-interface PlaceLocation extends Location {
+interface PlaceLocation extends LocationType {
   name: string;
   order: number;
 }
@@ -32,21 +32,21 @@ export default function RouteMapScreen() {
   const { isDarkMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [placeLocations, setPlaceLocations] = useState<PlaceLocation[]>([]);
-  const [userLocation, setUserLocation] = useState<Location | null>(null);
+  const [userLocation, setUserLocation] = useState<LocationType | null>(null);
+  const [routes, setRoutes] = useState<LocationType[][]>([]);
 
   useEffect(() => {
-    const getUserLocation = async () => {
+    const getUserLocation = async (): Promise<LocationType | null> => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
           console.error('Permission to access location was denied');
           return null;
         }
-
         const location = await Location.getCurrentPositionAsync({});
         return {
           latitude: location.coords.latitude,
-          longitude: location.coords.longitude
+          longitude: location.coords.longitude,
         };
       } catch (error) {
         console.error('Error getting user location:', error);
@@ -54,46 +54,110 @@ export default function RouteMapScreen() {
       }
     };
 
-    const getPlaceCoordinates = async (placeName: string, userLoc: Location, order: number) => {
+    const getPlaceCoordinates = async (
+      placeName: string,
+      userLoc: LocationType,
+      order: number
+    ): Promise<PlaceLocation | null> => {
       try {
-        // First, get the city name from user's location
-        const reverseGeocode = await fetch(
+        // Obtener ciudad de la ubicación del usuario
+        const reverseGeocodeRes = await fetch(
           `https://maps.googleapis.com/maps/api/geocode/json?latlng=${userLoc.latitude},${userLoc.longitude}&key=${API_GOOGLE}`
         );
-        const reverseData = await reverseGeocode.json();
-        
+        const reverseData = await reverseGeocodeRes.json();
+
         let cityName = '';
         if (reverseData.results && reverseData.results.length > 0) {
-          const addressComponents = reverseData.results[0].address_components;
-          const cityComponent = addressComponents.find(
-            (component: any) => component.types.includes('locality')
-          );
-          if (cityComponent) {
-            cityName = cityComponent.long_name;
-          }
+          const addrComponents = reverseData.results[0].address_components;
+          const cityComp = addrComponents.find((c: any) => c.types.includes('locality'));
+          if (cityComp) cityName = cityComp.long_name;
         }
 
-        // Then search for the place within the city
-        const searchQuery = `${placeName}, ${cityName}`;
-        const response = await fetch(
-          `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&location=${userLoc.latitude},${userLoc.longitude}&radius=1500&key=${API_GOOGLE}`
+        const searchQuery = cityName ? `${placeName}, ${cityName}` : placeName;
+
+        // Amplío el radio a 5000 metros
+        const placeRes = await fetch(
+          `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(
+            searchQuery
+          )}&location=${userLoc.latitude},${userLoc.longitude}&radius=5000&key=${API_GOOGLE}`
         );
-        const data = await response.json();
-        
+        const data = await placeRes.json();
+
         if (data.results && data.results.length > 0) {
           const { lat, lng } = data.results[0].geometry.location;
-          return {
-            latitude: lat,
-            longitude: lng,
-            name: placeName,
-            order
-          };
+          console.log(`Encontrado lugar: ${placeName} -> ${lat},${lng}`);
+          return { latitude: lat, longitude: lng, name: placeName, order };
+        } else {
+          console.warn(`No se encontró el lugar: ${placeName}`);
         }
         return null;
       } catch (error) {
         console.error('Error getting coordinates:', error);
         return null;
       }
+    };
+
+    const decodePolyline = (t: string): LocationType[] => {
+      let points: LocationType[] = [];
+      let index = 0,
+        len = t.length;
+      let lat = 0,
+        lng = 0;
+
+      while (index < len) {
+        let b,
+          shift = 0,
+          result = 0;
+        do {
+          b = t.charCodeAt(index++) - 63;
+          result |= (b & 0x1f) << shift;
+          shift += 5;
+        } while (b >= 0x20);
+        const dlat = result & 1 ? ~(result >> 1) : result >> 1;
+        lat += dlat;
+
+        shift = 0;
+        result = 0;
+        do {
+          b = t.charCodeAt(index++) - 63;
+          result |= (b & 0x1f) << shift;
+          shift += 5;
+        } while (b >= 0x20);
+        const dlng = result & 1 ? ~(result >> 1) : result >> 1;
+        lng += dlng;
+
+        points.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
+      }
+      return points;
+    };
+
+    const getRouteBetweenPoints = async (
+      start: LocationType,
+      end: LocationType
+    ): Promise<LocationType[]> => {
+      try {
+        const res = await fetch(
+          `https://maps.googleapis.com/maps/api/directions/json?origin=${start.latitude},${start.longitude}&destination=${end.latitude},${end.longitude}&key=${API_GOOGLE}`
+        );
+        const data = await res.json();
+        if (data.routes && data.routes.length > 0) {
+          return decodePolyline(data.routes[0].overview_polyline.points);
+        }
+        return [];
+      } catch (error) {
+        console.error('Error fetching directions:', error);
+        return [];
+      }
+    };
+
+    const fetchRoutes = async (locations: PlaceLocation[]) => {
+      const allRoutes: LocationType[][] = [];
+      for (let i = 0; i < locations.length - 1; i++) {
+        const routePoints = await getRouteBetweenPoints(locations[i], locations[i + 1]);
+        console.log(`Ruta entre ${locations[i].name} y ${locations[i + 1].name} tiene ${routePoints.length} puntos`);
+        allRoutes.push(routePoints);
+      }
+      setRoutes(allRoutes);
     };
 
     const fetchCoordinates = async () => {
@@ -103,23 +167,26 @@ export default function RouteMapScreen() {
         setLoading(false);
         return;
       }
-      
       setUserLocation(userLoc);
 
-      // Sort places by order
       const sortedPlaces = [...route.params.places].sort((a, b) => a.order - b.order);
-      
-      // Get coordinates for each place
+
       const locations = await Promise.all(
-        sortedPlaces.map(place => getPlaceCoordinates(place.name, userLoc, place.order))
+        sortedPlaces.map((place) => getPlaceCoordinates(place.name, userLoc, place.order))
       );
 
-      // Filter out any null results and sort by order
       const validLocations = locations
         .filter((loc): loc is PlaceLocation => loc !== null)
         .sort((a, b) => a.order - b.order);
 
+      console.log('Lugares válidos encontrados:', validLocations);
+
       setPlaceLocations(validLocations);
+
+      await fetchRoutes(validLocations);
+
+      console.log('Rutas obtenidas:', routes);
+
       setLoading(false);
     };
 
@@ -134,13 +201,17 @@ export default function RouteMapScreen() {
     );
   }
 
-  // Calculate center point for initial region
-  const centerLat = placeLocations.reduce((sum, loc) => sum + loc.latitude, 0) / placeLocations.length;
-  const centerLng = placeLocations.reduce((sum, loc) => sum + loc.longitude, 0) / placeLocations.length;
+  const centerLat =
+    placeLocations.reduce((sum, loc) => sum + loc.latitude, 0) / placeLocations.length;
+  const centerLng =
+    placeLocations.reduce((sum, loc) => sum + loc.longitude, 0) / placeLocations.length;
 
-  // Calculate the maximum distance between any two points to set the zoom level
-  const maxLatDiff = Math.max(...placeLocations.map(loc => loc.latitude)) - Math.min(...placeLocations.map(loc => loc.latitude));
-  const maxLngDiff = Math.max(...placeLocations.map(loc => loc.longitude)) - Math.min(...placeLocations.map(loc => loc.longitude));
+  const maxLatDiff =
+    Math.max(...placeLocations.map((loc) => loc.latitude)) -
+    Math.min(...placeLocations.map((loc) => loc.latitude));
+  const maxLngDiff =
+    Math.max(...placeLocations.map((loc) => loc.longitude)) -
+    Math.min(...placeLocations.map((loc) => loc.longitude));
 
   return (
     <View style={styles.container}>
@@ -150,34 +221,35 @@ export default function RouteMapScreen() {
         initialRegion={{
           latitude: centerLat,
           longitude: centerLng,
-          latitudeDelta: maxLatDiff * 1.5,
-          longitudeDelta: maxLngDiff * 1.5,
+          latitudeDelta: maxLatDiff * 1.5 || 0.05,
+          longitudeDelta: maxLngDiff * 1.5 || 0.05,
         }}
         customMapStyle={isDarkMode ? darkMapStyle : []}
       >
         {userLocation && (
-          <Marker
-            coordinate={userLocation}
-            title="Tu ubicación"
-            pinColor="blue"
-          />
+          <Marker coordinate={userLocation} title="Tu ubicación" pinColor="blue" />
         )}
-        
+
         {placeLocations.map((location, index) => (
           <Marker
             key={location.order}
             coordinate={location}
             title={`${location.order}. ${location.name}`}
-            description={index === 0 ? "Punto de inicio" : index === placeLocations.length - 1 ? "Punto final" : `Parada ${index + 1}`}
-            pinColor={index === 0 ? "green" : index === placeLocations.length - 1 ? "red" : "orange"}
+            description={
+              index === 0
+                ? 'Punto de inicio'
+                : index === placeLocations.length - 1
+                ? 'Punto final'
+                : `Parada ${index + 1}`
+            }
+            pinColor={index === 0 ? 'green' : index === placeLocations.length - 1 ? 'red' : 'orange'}
           />
         ))}
 
-        {/* Draw lines between consecutive points */}
-        {placeLocations.slice(0, -1).map((location, index) => (
+        {routes.map((routePoints, index) => (
           <Polyline
-            key={`${location.order}-${placeLocations[index + 1].order}`}
-            coordinates={[location, placeLocations[index + 1]]}
+            key={`route-${index}`}
+            coordinates={routePoints}
             strokeColor="#3b82f6"
             strokeWidth={3}
           />
@@ -188,19 +260,11 @@ export default function RouteMapScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  map: {
-    flex: 1,
-  },
-  loadingContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  container: { flex: 1 },
+  map: { flex: 1 },
+  loadingContainer: { justifyContent: 'center', alignItems: 'center' },
 });
 
-// Dark map style
 const darkMapStyle = [
   { elementType: 'geometry', stylers: [{ color: '#212121' }] },
   { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
@@ -224,4 +288,4 @@ const darkMapStyle = [
   { featureType: 'transit.station', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
   { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#000000' }] },
   { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#3d3d3d' }] },
-]; 
+];
