@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { Calendar } from 'react-native-calendars';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -20,7 +21,12 @@ export default function RegisterScreen() {
     confirmPassword: '',
     birthDate: '',
   });
+  // Eliminado estado de DatePicker, solo usaremos un input de texto para la fecha de nacimiento
+  const [errorMessage, setErrorMessage] = useState('');
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [showCalendar, setShowCalendar] = useState(false);
+  // Estado para controlar la fecha actual del calendario
+  const [calendarDate, setCalendarDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   // Verificar la disponibilidad del servidor al cargar la pantalla
   useEffect(() => {
@@ -42,13 +48,32 @@ export default function RegisterScreen() {
   }, []);
 
   const handleRegister = async () => {
+    setErrorMessage(''); // Limpiar error previo
     if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
-      toast.error('Por favor complete todos los campos');
+      setErrorMessage('Por favor complete todos los campos');
       return;
     }
     if (formData.password !== formData.confirmPassword) {
-      toast.error('Las contraseñas no coinciden');
+      setErrorMessage('Las contraseñas no coinciden');
       return;
+    }
+    // Validar contraseña: mínimo 8 caracteres, al menos un número y una letra
+    if (!/^.*(?=.*[a-zA-Z])(?=.*\d).{8,}.*$/.test(formData.password)) {
+      setErrorMessage('La contraseña debe tener al menos 8 caracteres y contener letras y números');
+      return;
+    }
+    // Validar formato de fecha (YYYY-MM-DD)
+    if (formData.birthDate && !/^\d{4}-\d{2}-\d{2}$/.test(formData.birthDate)) {
+      setErrorMessage('La fecha debe tener el formato YYYY-MM-DD');
+      return;
+    }
+    // Validar que la fecha sea válida (no solo el formato)
+    if (formData.birthDate) {
+      const date = new Date(formData.birthDate);
+      if (isNaN(date.getTime())) {
+        setErrorMessage('La fecha ingresada no es válida');
+        return;
+      }
     }
 
     // Verificar nuevamente la disponibilidad del servidor antes de intentar registrarse
@@ -56,36 +81,25 @@ export default function RegisterScreen() {
       const isAvailable = await pingServer(8000);
       
       if (!isAvailable) {
-        Alert.alert(
-          'Servidor no disponible',
-          'No se puede conectar al servidor en este momento. Por favor, verifica tu conexión a internet y que el servidor esté funcionando.',
-          [{ text: 'OK' }]
-        );
+        setErrorMessage('No se puede conectar al servidor en este momento. Por favor, verifica tu conexión a internet y que el servidor esté funcionando.');
         return;
       }
-      
-      // Si ahora está disponible, actualizamos el estado
       setServerStatus('online');
     }
 
     try {
-      // Obtener la fecha actual si no se proporcionó una fecha de nacimiento
       const birthDate = formData.birthDate || new Date().toISOString().split('T')[0];
-      
-      // Llamar al método register del contexto de autenticación
       await register({
         Name: formData.name,
         Email: formData.email,
         Password: formData.password,
         Birth_Date: birthDate,
-        User_Type: 'Usuario', // Valor predeterminado para usuarios normales
+        User_Type: 'Usuario',
       });
-      
       toast.success('Registro exitoso');
-      
       // La navegación se maneja automáticamente en el App.tsx según el estado de autenticación
     } catch (err) {
-      // Los errores ya se manejan en el contexto de autenticación
+      setErrorMessage('Hubo un problema al ingresar los datos, inténtelo de nuevo');
       console.error('Error en registro:', err);
     }
   };
@@ -126,9 +140,10 @@ export default function RegisterScreen() {
           </View>
         )}
 
-        {error && (
+        {/* Mostrar error si existe */}
+        {errorMessage !== '' && (
           <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
+            <Text style={styles.errorText}>{errorMessage}</Text>
           </View>
         )}
 
@@ -154,16 +169,71 @@ export default function RegisterScreen() {
           />
         </View>
 
+        {/* Campo de Fecha con calendario visual */}
         <View style={styles.inputContainer}>
           <MaterialCommunityIcons name="calendar" size={24} color="#666" style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Fecha de nacimiento (YYYY-MM-DD)"
-            value={formData.birthDate}
-            onChangeText={(text) => setFormData({...formData, birthDate: text})}
-            keyboardType="numbers-and-punctuation"
-          />
+          <TouchableOpacity
+            style={{ flex: 1, justifyContent: 'center' }}
+            onPress={() => setShowCalendar(!showCalendar)}
+            activeOpacity={0.8}
+          >
+            <Text style={{ color: formData.birthDate ? '#222' : '#999', padding: 15, fontSize: 16 }}>
+              {formData.birthDate ? formData.birthDate : 'Fecha de nacimiento (YYYY-MM-DD)'}
+            </Text>
+          </TouchableOpacity>
         </View>
+        {showCalendar && (
+          <View style={styles.calendarContainer}>
+            {/* Input manual para la fecha arriba del calendario */}
+            <TextInput
+              style={{
+                borderColor: '#FF385C',
+                borderWidth: 1,
+                borderRadius: 8,
+                margin: 10,
+                padding: 10,
+                fontSize: 16,
+                color: '#222',
+                backgroundColor: '#fff',
+              }}
+              placeholder="YYYY-MM-DD"
+              value={formData.birthDate}
+              onChangeText={text => {
+                setFormData({ ...formData, birthDate: text });
+              }}
+              keyboardType="numbers-and-punctuation"
+              maxLength={10}
+              onBlur={() => {
+                // Si la fecha es válida, mover el calendario a esa fecha
+                if (/^\d{4}-\d{2}-\d{2}$/.test(formData.birthDate)) {
+                  const date = new Date(formData.birthDate);
+                  if (!isNaN(date.getTime())) {
+                    setCalendarDate(formData.birthDate);
+                  }
+                }
+              }}
+            />
+            <Calendar
+              current={calendarDate}
+              onDayPress={(day: {dateString: string}) => {
+                setFormData({ ...formData, birthDate: day.dateString });
+                setCalendarDate(day.dateString);
+                setShowCalendar(false);
+              }}
+              maxDate={new Date().toISOString().split('T')[0]}
+              markedDates={formData.birthDate ? { [formData.birthDate]: { selected: true, selectedColor: '#FF385C' } } : {}}
+              theme={{
+                selectedDayBackgroundColor: '#FF385C',
+                todayTextColor: '#FF385C',
+                arrowColor: '#FF385C',
+                textSectionTitleColor: '#222',
+                textDayFontWeight: 'bold',
+                textMonthFontWeight: 'bold',
+                textDayHeaderFontWeight: 'bold',
+              }}
+            />
+          </View>
+        )}
 
         <View style={styles.inputContainer}>
           <MaterialCommunityIcons name="lock-outline" size={24} color="#666" style={styles.inputIcon} />
@@ -219,6 +289,16 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
+  calendarContainer: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    marginBottom: 15,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
   container: {
     flex: 1,
     backgroundColor: 'white',
